@@ -26,14 +26,14 @@
 
 package MG2D.geometrie;
 
-import MG2D.Couleur;
+
 import java.awt.Graphics;
 
 /**
  * Cette classe permet la création de rectangles.<br />
  * Un rectangle est défini par deux points (le point A en bas à gauche et le point B en haut à droite), deux entiers permettant de régler les arrondis ainsi qu'un booléen pour le remplissage ou non de la forme géométrique.
  * @author Equipe 2D, Rémi Synave
- * @version 2.9
+ * @version 2.2
  * @see Point
  */
 public class Rectangle extends Dessin {

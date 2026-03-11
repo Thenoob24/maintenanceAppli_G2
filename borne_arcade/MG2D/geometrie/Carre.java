@@ -26,7 +26,6 @@
 
 package MG2D.geometrie;
 
-import MG2D.Couleur;
 import java.awt.Graphics;
 
 import java.lang.RuntimeException;
@@ -37,7 +36,7 @@ import java.lang.RuntimeException;
  * <br /><br />
  * Elle hérite de la classe Rectangle afin que toutes les méthodes de la classe Rectangle s'applique également à celle-ci. Attention, de nombreuses méthodes (notamment les construteurs) peuvent lancer des exceptions. Pour plus d'informations, voir la classe Rectangle.
  * @author Equipe 2D, Rémi Synave
- * @version 2.9
+ * @version 2.2
  * @see Rectangle
  */
 public class Carre extends Rectangle {

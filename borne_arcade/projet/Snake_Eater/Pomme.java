@@ -1,32 +1,29 @@
 import MG2D.geometrie.Carre;
 import MG2D.geometrie.Point;
-import MG2D.Couleur;
+import MG2D.geometrie.Couleur;
+
 
 // crée une pomme
 public class Pomme {
-	// Attributs //
+// Attributs //
 	private Carre c;
 	private int taillecarre = 30;
 	private boolean etat;
-
-	// Constructeur //
-	public Pomme(Point a) {
-		c = new Carre(Couleur.ROUGE, a, taillecarre, true);
+// Constructeur //
+	public Pomme ( Point a ) {
+		c = new Carre ( Couleur.ROUGE, a, taillecarre, true );
 		etat = false;
 	}
-
-	// Accesseurs //
+// Accesseurs //
 	// Getter //
-	public Carre getC() {
+	public Carre getC () {
 		return c;
 	}
-
-	public boolean getEtat() {
+	public boolean getEtat () {
 		return etat;
 	}
-
 	// Setter //
-	public void setEtat(boolean etat) {
+	public void setEtat ( boolean etat ) {
 		this.etat = etat;
 	}
 }

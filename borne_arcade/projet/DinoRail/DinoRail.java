@@ -1,6 +1,6 @@
 
 import MG2D.FenetrePleinEcran;
-import MG2D.Couleur;
+import MG2D.geometrie.Couleur;
 import MG2D.geometrie.Point;
 import MG2D.geometrie.Rectangle;
 import MG2D.geometrie.Texte;
@@ -14,7 +14,7 @@ public class DinoRail {
     final static int largeur = 1275;
     final static int hauteur = 1020;
 
-    // static Fenetre f = new Fenetre("DinoRail", largeur, hauteur);
+    //static Fenetre f = new Fenetre("DinoRail", largeur, hauteur);
     static FenetrePleinEcran f = new FenetrePleinEcran("fen");
 
     private static ClavierBorneArcade clavier;
@@ -23,12 +23,14 @@ public class DinoRail {
             Couleur.ROUGE,
             "",
             calibri,
-            f.getMilieu());
+            f.getMilieu()
+    );
     private static Texte stats = new Texte(
             Couleur.NOIR,
             "",
             calibri,
-            new Point(f.getMilieu().getX(), f.getMilieu().getY() + 50));
+            new Point(f.getMilieu().getX(), f.getMilieu().getY() + 50)
+    );
 
     private static boolean gameFinished = false;
 
@@ -48,8 +50,7 @@ public class DinoRail {
         sol.setPlein(true);
         Rectangle player = new Rectangle(Couleur.VERT, new Point(100, 150), new Point(200, 300));
         player.setPlein(true);
-        // Animation player = new Animation("./assets/img/player-", "1", "4", "png", new
-        // Point(100, 150));
+        //Animation player = new Animation("./assets/img/player-", "1", "4", "png", new Point(100, 150));
 
         boolean hasJump = false;
         boolean isAscended = false;
@@ -58,8 +59,7 @@ public class DinoRail {
         ArrayList<Obstacle> listObstacle = new ArrayList<>();
         Iterator<Obstacle> it;
 
-        listObstacle
-                .add(new Obstacle(new Point(largeur, 150), new Point(largeur + 40, 200), "./assets/img/cactus.png"));
+        listObstacle.add(new Obstacle(new Point(largeur, 150), new Point(largeur + 40, 200), "./assets/img/cactus.png"));
 
         f.ajouter(listObstacle.get(0));
         f.ajouter(sol);
@@ -73,11 +73,9 @@ public class DinoRail {
 
             if (now - lastObstacleTime >= minDelayObstacle + Math.random() * (3500 - minDelayObstacle)) {
                 if (Math.random() > 0.3) {
-                    listObstacle.add(new Obstacle(new Point(largeur, 150), new Point(largeur + 40, 200),
-                            "./assets/img/cactus.png"));
+                    listObstacle.add(new Obstacle(new Point(largeur, 150), new Point(largeur + 40, 200), "./assets/img/cactus.png"));
                 } else {
-                    listObstacle.add(new Obstacle(new Point(largeur, 250), new Point(largeur + 40, 300),
-                            "./assets/img/bird.png"));
+                    listObstacle.add(new Obstacle(new Point(largeur, 250), new Point(largeur + 40, 300), "./assets/img/bird.png"));
                 }
 
                 f.ajouter(listObstacle.get(listObstacle.size() - 1));
@@ -87,7 +85,7 @@ public class DinoRail {
             // Le joueur saute
             if (clavier.getJoyJ1HautEnfoncee() && !hasJump) {
                 // Bruitage jumpBruitage = new Bruitage(
-                // "./assets/sound/jump.mp3");
+                //         "./assets/sound/jump.mp3");
                 // jumpBruitage.lecture();
                 hasJump = true;
                 isAscended = true;
@@ -126,7 +124,7 @@ public class DinoRail {
                 if (obstacle.isOffScreen()) {
                     f.supprimer(obstacle);
                     it.remove();
-                } // Gérer le déplacement des obstacles
+                } // Gérer le déplacement des obstacles 
                 else {
                     obstacle.translater(-10, 0);
                 }

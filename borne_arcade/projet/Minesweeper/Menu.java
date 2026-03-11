@@ -1,4 +1,4 @@
-import MG2D.Couleur;
+import MG2D.geometrie.Couleur;
 import MG2D.Fenetre;
 import MG2D.geometrie.Point;
 import MG2D.geometrie.Rectangle;

@@ -24,7 +24,7 @@
 /*                                                                   */
 /*********************************************************************/
 
-package MG2D;
+package MG2D.geometrie;
 
 import java.awt.Color;
 
@@ -33,7 +33,7 @@ import java.awt.Color;
  * Cette classe contient des constantes représentant les couleurs les plus utiliées.<br />
  * Vous pourrez toujours les éclaircir ou assombrir si elles en lui conviennent pas ou utiliser le constructeur prenant 3 entiers r, v et b en paramètre pour créer ses propres couleurs.
  * @author Rémi Synave
- * @version 2.9
+ * @version 2.2
  * @see <a href="https://docs.oracle.com/javase/7/docs/api/java/awt/Color.html" target="_blank">java.awt.Color</a>
  */
 

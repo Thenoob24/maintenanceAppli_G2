@@ -33,7 +33,7 @@ package MG2D.geometrie;
  * L'objectif est de permettre de fournir une méthode de collision pour toutes les formes géréées par le moteur car les collisions rectangle - rectangle sont très facile à détecter.<br /><br />
  * Chaque forme géométrique héritant de Dessin possède une méthode getBoiteEnglobante.
  * @author Equipe 2D, Rémi Synave
- * @version 2.9
+ * @version 2.2
  * @see Dessin
  * @see Dessin#getBoiteEnglobante
  */

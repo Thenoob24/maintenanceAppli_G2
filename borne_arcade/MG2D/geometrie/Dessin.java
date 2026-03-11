@@ -26,7 +26,7 @@
 
 package MG2D.geometrie;
 
-import MG2D.Couleur;
+
 import java.awt.Graphics;
 
 /**
@@ -36,7 +36,7 @@ import java.awt.Graphics;
  * Elle permet de gérer la totalité des formes géométriques du moteur.<br />
  * Chaque classe de MG2D gérant une forme géométrique doit hériter de cette classe.
  * @author Equipe 2D, Rémi Synave
- * @version 2.9
+ * @version 2.2
  * @see Couleur
  * @see Dessin#intersection
  * @see Dessin#intersectionRapide

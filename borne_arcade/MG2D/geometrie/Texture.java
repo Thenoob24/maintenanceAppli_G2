@@ -26,7 +26,6 @@
 
 package MG2D.geometrie;
 
-import MG2D.Couleur;
 import java.util.ArrayList;
 
 import java.awt.Graphics;
@@ -46,7 +45,7 @@ import javax.imageio.ImageIO;
  * Si une couleur est spécifiée lors de la construction de l'objet (noir sinon), que l'image utilise la transparence et que l'on demande à afficher la forme pleine alors la couleur sera utilisée comme fond.<br />
  * Une Texture est définie par une image.
  * @author Equipe 2D, Rémi Synave
- * @version 2.9
+ * @version 2.2
  * @see Rectangle
  * @see <a href="https://docs.oracle.com/javase/7/docs/api/java/awt/image/BufferedImage.html" target="_blank">BufferedImage</a>
  * @see Rectangle#setHauteur

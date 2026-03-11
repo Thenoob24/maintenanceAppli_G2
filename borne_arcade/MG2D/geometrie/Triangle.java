@@ -26,14 +26,14 @@
 
 package MG2D.geometrie;
 
-import MG2D.Couleur;
+
 import java.awt.Graphics;
 
 /**
  * Cette classe permet la création de triangles.<br />
  * Un Triangle est défini par trois points.
  * @author Equipe 2D, Rémi Synave
- * @version 2.9
+ * @version 2.2
  * @see Point
  */
 public class Triangle extends Dessin {

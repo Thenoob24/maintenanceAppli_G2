@@ -6,97 +6,98 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.io.File;
 
-import MG2D.Couleur;
+
+import MG2D.geometrie.Couleur;
 import MG2D.geometrie.Point;
 import MG2D.geometrie.Texture;
 import MG2D.geometrie.Texte;
 
 public class Bouton {
-	private Texte texte;
-	private String chemin;
-	private String nom;
-	private Texture texture;
-	private int numeroDeJeu;
+    private Texte texte;
+    private String chemin;
+    private String nom;
+    private Texture texture;
+    private int numeroDeJeu;
 
-	public Bouton() {
-		this.texte = null;
-		this.texture = null;
-		this.chemin = null;
-		this.nom = null;
+
+    public Bouton(){
+	this.texte = null;
+	this.texture = null;
+	this.chemin = null;
+	this.nom = null;
+    }
+
+    public Bouton(Texte texte, Texture texture, String chemin, String nom){
+	this.texte = texte;
+	this.texture = texture;
+	this.chemin = chemin;
+	this.nom = nom;
+    }
+
+    public static void remplirBouton(){
+	for(int i = 0 ; i < Graphique.tableau.length ; i++){
+	    Graphique.tableau[i] = new Bouton();
 	}
 
-	public Bouton(Texte texte, Texture texture, String chemin, String nom) {
-		this.texte = texte;
-		this.texture = texture;
-		this.chemin = chemin;
-		this.nom = nom;
-	}
+	Path yourPath = FileSystems.getDefault().getPath("projet/");
 
-	public static void remplirBouton() {
-		for (int i = 0; i < Graphique.tableau.length; i++) {
-			Graphique.tableau[i] = new Bouton();
+	try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(yourPath)) {
+	    int i = Graphique.tableau.length - 1;
+	    for (Path path : directoryStream) {
+		Graphique.tableau[i].setTexte(new Texte(Couleur .NOIR, path.getFileName().toString(), new Font("Calibri", Font.TYPE1_FONT, 30), new Point(310, 510)));
+		Graphique.tableau[i].setTexture(new Texture("img/bouton2.png", new Point(100, 478), 400, 65));
+		for(int j=0;j<Graphique.tableau.length-(i+1);j++){
+		    Graphique.tableau[i].getTexte().translater(0,-110);
+		    Graphique.tableau[i].getTexture().translater(0,-110);
 		}
-
-		Path yourPath = FileSystems.getDefault().getPath("projet/");
-
-		try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(yourPath)) {
-			int i = Graphique.tableau.length - 1;
-			for (Path path : directoryStream) {
-				Graphique.tableau[i].setTexte(new Texte(Couleur.NOIR, path.getFileName().toString(),
-						new Font("Calibri", Font.TYPE1_FONT, 30), new Point(310, 510)));
-				Graphique.tableau[i].setTexture(new Texture("img/bouton2.png", new Point(100, 478), 400, 65));
-				for (int j = 0; j < Graphique.tableau.length - (i + 1); j++) {
-					Graphique.tableau[i].getTexte().translater(0, -110);
-					Graphique.tableau[i].getTexture().translater(0, -110);
-				}
-				Graphique.tableau[i].setChemin("projet/" + path.getFileName().toString());
-				Graphique.tableau[i].setNom(path.getFileName().toString());
-				Graphique.tableau[i].setNumeroDeJeu(i);
-				i--;
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-
+		Graphique.tableau[i].setChemin("projet/"+path.getFileName().toString());
+		Graphique.tableau[i].setNom(path.getFileName().toString());
+		Graphique.tableau[i].setNumeroDeJeu(i);
+		i--;
+	    }
+	} catch (IOException e) {
+	    e.printStackTrace();
 	}
 
-	public String getChemin() {
-		return chemin;
-	}
+    }
 
-	public void setChemin(String chemin) {
-		this.chemin = chemin;
-	}
+    public String getChemin() {
+	return chemin;
+    }
 
-	public String getNom() {
-		return nom;
-	}
+    public void setChemin(String chemin) {
+	this.chemin = chemin;
+    }
 
-	public void setNom(String nom) {
-		this.nom = nom;
-	}
+    public String getNom() {
+	return nom;
+    }
 
-	public Texte getTexte() {
-		return texte;
-	}
+    public void setNom(String nom) {
+	this.nom = nom;
+    }
 
-	public void setTexte(Texte texte) {
-		this.texte = texte;
-	}
+    public Texte getTexte() {
+	return texte;
+    }
 
-	public Texture getTexture() {
-		return texture;
-	}
+    public void setTexte(Texte texte) {
+	this.texte = texte;
+    }
 
-	public void setTexture(Texture texture) {
-		this.texture = texture;
-	}
+    public Texture getTexture() {
+	return texture;
+    }
 
-	public int getNumeroDeJeu() {
-		return numeroDeJeu;
-	}
+    public void setTexture(Texture texture) {
+	this.texture = texture;
+    }
 
-	public void setNumeroDeJeu(int numeroDeJeu) {
-		this.numeroDeJeu = numeroDeJeu;
-	}
+    public int getNumeroDeJeu() {
+	return numeroDeJeu;
+    }
+
+    public void setNumeroDeJeu(int numeroDeJeu) {
+	this.numeroDeJeu = numeroDeJeu;
+    }
 }
