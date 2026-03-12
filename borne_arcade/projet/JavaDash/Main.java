@@ -3,8 +3,8 @@ class Main{
         Jeu javaDash = new Jeu();
         int finDuJeu = 0;
 
-        javaDash.CreationImage();
-        
+        javaDash.CreationJeu();
+
         while(finDuJeu != 1){
             javaDash.NewGame(finDuJeu);
         }
