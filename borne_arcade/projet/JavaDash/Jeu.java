@@ -43,38 +43,6 @@ class Jeu {
         }
     }
 
-    // Gestion des obstacles
-    class Obstacle {
-        Dessin dessin;
-        int x;
-        int y;
-        int vy;
-        int minY;
-        int maxY;
-        boolean isSpike;
-
-        public Obstacle(Dessin d, int startX, int startY, int vitesseY, int amplitudeY, boolean isSpike) {
-            this.dessin = d;
-            this.x = startX;
-            this.y = startY;
-            this.vy = vitesseY;
-            this.minY = startY - amplitudeY;
-            this.maxY = startY + amplitudeY;
-            this.isSpike = isSpike;
-        }
-
-        public void update() {
-            dessin.translater(-10, 0); // Vitesse horizontale
-            x -= 10;
-            if (vy != 0) {
-                y += vy;
-                dessin.translater(0, vy);
-                if (y <= minY || y >= maxY) {
-                    vy = -vy; // Rebond
-                }
-            }
-        }
-    }
 
     private ArrayList<Obstacle> obstacles = new ArrayList<Obstacle>();
     private int cooldown = 0;
@@ -144,95 +112,97 @@ class Jeu {
         fen.rafraichir();
     }
 
+
+
     public int NewGame(int game) {
         try {
             Thread.sleep(16); // ~60 FPS
-        } catch (InterruptedException e) {
-        }
+        } catch (InterruptedException e) {}
 
-        // Déplacement du fond
+        // ------------------------------------------------------------------
+        // 1. DÉFILEMENT DU FOND (vitesse x2 plus lente que les obstacles)
+        // ------------------------------------------------------------------
         fond1.translater(-5, 0);
         fond2.translater(-5, 0);
         fond3.translater(-5, 0);
+        if (fond1.getA().getX() <= -1280) fond1.translater(3840, 0);
+        if (fond2.getA().getX() <= -1280) fond2.translater(3840, 0);
+        if (fond3.getA().getX() <= -1280) fond3.translater(3840, 0);
 
-        if (fond1.getA().getX() <= -1280) {
-            fond1.translater(3840, 0);
-        }
-        if (fond2.getA().getX() <= -1280) {
-            fond2.translater(3840, 0);
-        }
-        if (fond3.getA().getX() <= -1280) {
-            fond3.translater(3840, 0);
-        }
-
-        // Déplacement du sol (vitesse double, comme les obstacles)
+        // ------------------------------------------------------------------
+        // 2. DÉFILEMENT DU SOL
+        // ------------------------------------------------------------------
         sol1.translater(-10, 0);
         sol2.translater(-10, 0);
         sol3.translater(-10, 0);
+        if (sol1.getA().getX() <= -1280) sol1.translater(3840, 0);
+        if (sol2.getA().getX() <= -1280) sol2.translater(3840, 0);
+        if (sol3.getA().getX() <= -1280) sol3.translater(3840, 0);
 
-        if (sol1.getA().getX() <= -1280)
-            sol1.translater(3840, 0);
-        if (sol2.getA().getX() <= -1280)
-            sol2.translater(3840, 0);
-        if (sol3.getA().getX() <= -1280)
-            sol3.translater(3840, 0);
-
-        // Déplacement du plafond 
+        // ------------------------------------------------------------------
+        // 3. DÉFILEMENT DU PLAFOND
+        // ------------------------------------------------------------------
         plafond1.translater(-10, 0);
         plafond2.translater(-10, 0);
         plafond3.translater(-10, 0);
-        
         if (plafond1.getA().getX() <= -1280) plafond1.translater(3840, 0);
         if (plafond2.getA().getX() <= -1280) plafond2.translater(3840, 0);
         if (plafond3.getA().getX() <= -1280) plafond3.translater(3840, 0);
 
-        // Logique d'apparition en fonction du rythme (amplitude interceptée)
-        if (cooldown > 0)
-            cooldown--;
+        // ------------------------------------------------------------------
+        // 4. SPAWN D'OBSTACLES RYTHMÉ SUR L'AMPLITUDE AUDIO
+        // ------------------------------------------------------------------
+        if (cooldown > 0) cooldown--;
         float amp = (audioDevice != null) ? audioDevice.currentAmplitude : 0;
 
-        // Un pic d'amplitude > 6000 est en général un marqueur de grosse basse
         if (amp > 6000 && cooldown == 0) {
+
             if (Math.random() > 0.5) {
-                // Spike logic
-                consecutivePlatforms = 0; // Réinitialise l'escalier
+                // --- SPIKES ---
+                consecutivePlatforms = 0;
 
                 int nbSpikes = 1;
-                if (amp > 12000)
-                    nbSpikes = 3;
-                else if (amp > 9000)
-                    nbSpikes = 2;
+                if      (amp > 12000) nbSpikes = 3;
+                else if (amp > 9000)  nbSpikes = 2;
 
                 for (int s = 0; s < nbSpikes; s++) {
                     int startY = 100;
-                    int vitY = 0;
-                    int ampY = 0;
+                    int vitY   = 0;
+                    int ampY   = 0;
+
+                    // Spike mobile si amplitude très forte
                     if (amp > 15000 && Math.random() > 0.4) {
-                        startY = 150 + (int) (Math.random() * 200);
-                        vitY = 5;
-                        ampY = 100;
+                        startY = 150 + (int)(Math.random() * 200);
+                        vitY   = 5;
+                        ampY   = 100;
                     }
-                    Texture spike = new Texture("./img/ennemis/spike.png", new Point(1280 + s * 100, startY), 100, 100);
-                    obstacles.add(new Obstacle(spike, 1280 + s * 100, startY, vitY, ampY, true));
+
+                    // Spike sol
+                    Texture spike = new Texture(
+                        "./img/ennemis/spike.png",
+                        new Point(1280 + s * 100, startY), 100, 100);
+                    obstacles.add(new Obstacle(spike, 1280 + s * 100, startY, vitY, ampY, true, false));
                     fen.ajouter(spike);
-                    
-                    // Miroir plafond
+
+                    // Spike miroir plafond
                     int mirrorY = 1024 - startY - 100;
-                    Texture spikeMir = new Texture("./img/ennemis/spike_flip.png", new Point(1280 + s * 100, mirrorY), 100, 100);
-                    obstacles.add(new Obstacle(spikeMir, 1280 + s * 100, mirrorY, -vitY, ampY, true));
+                    Texture spikeMir = new Texture(
+                        "./img/ennemis/spike_flip.png",
+                        new Point(1280 + s * 100, mirrorY), 100, 100);
+                    obstacles.add(new Obstacle(spikeMir, 1280 + s * 100, mirrorY, -vitY, ampY, true, true));
                     fen.ajouter(spikeMir);
                 }
 
-                // Le cooldown dépend du nombre de spikes + un espacement pour que le saut soit possible
                 cooldown = nbSpikes * 10 + 20;
+
             } else {
-                // Platform logic (en cube de 100x100, formant un escalier)
+                // --- PLATEFORMES EN ESCALIER ---
                 consecutivePlatforms++;
                 if (consecutivePlatforms == 1) {
-                    lastPlatformY = 100; // Première hauteur au niveau du sol (comme les spikes)
+                    lastPlatformY = 100;
                 } else {
-                    lastPlatformY += 100; // Monte d'un bloc de 100
-                    if (consecutivePlatforms > 2) { // Limite maximale de 2 cubes d'escalier
+                    lastPlatformY += 100;
+                    if (consecutivePlatforms > 2) {
                         lastPlatformY = 100;
                         consecutivePlatforms = 1;
                     }
@@ -240,32 +210,37 @@ class Jeu {
 
                 int vitY = 0;
                 int ampY = 0;
-                // Effet : plateforme mobile si l'amplitude est massive (et qu'elle est isolée)
+                // Plateforme mobile si amplitude massive
                 if (amp > 16000 && consecutivePlatforms == 1) {
                     vitY = 3;
                     ampY = 150;
-                    lastPlatformY = 300; // Force une hauteur de départ plus élevée pour l'amplitude de mouvement
+                    lastPlatformY = 300;
                 }
-                
-                // Normal
-                Texture plat = new Texture("./img/Tiles/Tile_05.png", new Point(1280, lastPlatformY), 100, 100);
-                obstacles.add(new Obstacle(plat, 1280, lastPlatformY, vitY, ampY, false));
+
+                // Plateforme sol
+                Texture plat = new Texture(
+                    "./img/Tiles/Tile_05.png",
+                    new Point(1280, lastPlatformY), 100, 100);
+                obstacles.add(new Obstacle(plat, 1280, lastPlatformY, vitY, ampY, false, false));
                 fen.ajouter(plat);
-                
-                // Miroir plafond
+
+                // Plateforme miroir plafond
                 int mirrorY = 1024 - lastPlatformY - 100;
-                Texture platMir = new Texture("./img/Tiles/Tile_05_flip.png", new Point(1280, mirrorY), 100, 100);
-                obstacles.add(new Obstacle(platMir, 1280, mirrorY, -vitY, ampY, false));
+                Texture platMir = new Texture(
+                    "./img/Tiles/Tile_05_flip.png",
+                    new Point(1280, mirrorY), 100, 100);
+                obstacles.add(new Obstacle(platMir, 1280, mirrorY, -vitY, ampY, false, true));
                 fen.ajouter(platMir);
 
-                // 10 frames à -10 pixels/frame = 100 pixels. Les cubes collés
                 cooldown = 10;
             }
         }
 
-        // Effets Lumineux ! Un flash d'écran si l'amplitude est hardcore
+        // ------------------------------------------------------------------
+        // 5. EFFET FLASH ÉCRAN (amplitude hardcore)
+        // ------------------------------------------------------------------
         if (amp > 18000 && flashTime <= 0) {
-            flashTime = 2; // 2 frames de flash blanc éblouissant
+            flashTime = 2;
             fen.ajouter(flashScreen);
         }
         if (flashTime > 0) {
@@ -275,43 +250,62 @@ class Jeu {
             }
         }
 
-        // Mise à jour des obstacles
+        // ------------------------------------------------------------------
+        // 6. MISE À JOUR DES OBSTACLES + COLLISIONS
+        // ------------------------------------------------------------------
+        int pX = joueur.getTex().getA().getX();
+        int pY = joueur.getTex().getA().getY();
+        int pW = 80; // largeur hitbox joueur — adapte à ta texture
+        int pH = 80; // hauteur hitbox joueur — adapte à ta texture
+
         boolean collisionTop = false;
 
         for (int i = obstacles.size() - 1; i >= 0; i--) {
             Obstacle obs = obstacles.get(i);
             obs.update();
 
+            // Suppression hors écran
             if (obs.x < -200) {
                 fen.supprimer(obs.dessin);
                 obstacles.remove(i);
-            } else if (joueur.getTex().intersection(obs.dessin)) {
+                continue;
+            }
+
+            // Test de collision précis
+            if (obs.collidesWithPlayer(pX, pY, pW, pH)) {
                 if (obs.isSpike) {
+                    // Spike : mort immédiate
                     System.out.println("BOOM! Spike hit.");
                     return 3;
+
                 } else {
-                    int pY = joueur.getTex().getA().getY();
-                    int obsTop = ((Texture)obs.dessin).getA().getY() + 100; // haut de la plateforme
-                    
-                    // Si le joueur tombe et son centre est au dessus de la plateforme (tolérance)
+                    // Plateforme : atterrissage ou crash
+                    int obsTop = obs.y + 100; // bord supérieur de la plateforme
+
                     if (joueur.getVelocity() < 0 && (pY + 25) >= obsTop) {
+                        // Le joueur tombe et atterrit sur le dessus
                         joueur.getTex().translater(0, obsTop - pY);
                         joueur.setVelocity(0);
                         joueur.setJumping(false);
                         collisionTop = true;
                     } else if (pY < obsTop - 30) {
                         // Impact sur le mur vertical de la plateforme
-                        System.out.println("CRASH! Platform Wall hit.");
-                        return 3; 
+                        System.out.println("CRASH! Platform wall hit.");
+                        return 3;
                     }
                 }
             }
         }
-        
-        // Physique du joueur
+
+        // ------------------------------------------------------------------
+        // 7. PHYSIQUE ET INPUT JOUEUR
+        // ------------------------------------------------------------------
         joueur.bougerJoueur(clavier);
         joueur.updatePhysics(100);
 
+        // ------------------------------------------------------------------
+        // 8. RAFRAÎCHISSEMENT
+        // ------------------------------------------------------------------
         fen.rafraichir();
         return game = 1;
     }
