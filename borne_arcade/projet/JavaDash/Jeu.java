@@ -11,23 +11,33 @@ class Jeu {
     private Fenetre fen;
     private int W;
     private int H;
-    
-    private Texture fond1;
-    private Texture fond2;
-    private Texture fond3;
-    private Texture sol1;
-    private Texture sol2;
-    private Texture sol3;
-    private Texture plafond1;
-    private Texture plafond2;
-    private Texture plafond3;
+
+    private Texture fond1, fond2, fond3;
+    private Texture sol1, sol2, sol3;
+    private Texture plafond1, plafond2, plafond3;
     private MyAudioDevice audioDevice;
     private AdvancedPlayer player;
     private ClavierBorneArcade clavier;
     private Player joueur;
 
+    // --- BARRE DE PROGRESSION ---
+    private Rectangle barrefond;
+    private Rectangle barreProgression;
+    private long totalFrames = 0;
+    private static final int BAR_H = 8;
+
+    // --- ÉCRAN DE VICTOIRE ---
+    private Rectangle fondVictoire;
+    private Rectangle fondVictoireOverlay;
+    private Texte texteVictoire;
+    private Texte texteSousVictoire;
+    private boolean victoireAffichee = false;
+    private int victoireTimer = 0;           // délai avant de retourner le code 2
+    private static final int VICTOIRE_DUREE = 180; // ~3 secondes à 60fps
+
     class MyAudioDevice extends JavaSoundAudioDevice {
         public volatile float currentAmplitude = 0;
+        public volatile long framesPlayed = 0;
 
         @Override
         protected void writeImpl(short[] samples, int offs, int len) throws JavaLayerException {
@@ -35,11 +45,8 @@ class Jeu {
             for (int i = 0; i < len; i++) {
                 sum += (long) samples[offs + i] * (long) samples[offs + i];
             }
-            if (len > 0) {
-                currentAmplitude = (float) Math.sqrt(sum / len);
-            } else {
-                currentAmplitude = 0;
-            }
+            currentAmplitude = (len > 0) ? (float) Math.sqrt(sum / len) : 0;
+            framesPlayed += len;
             super.writeImpl(samples, offs, len);
         }
     }
@@ -50,38 +57,91 @@ class Jeu {
     private int consecutivePlatforms = 0;
     private int consecutiveSpikes = 0;
     private float meanAmplitude = 5000;
-    
+
     private Rectangle flashScreen;
     private int flashTime = 0;
 
+    // -------------------------------------------------------
+    // Calcule la durée totale du MP3 en samples PCM
+    // -------------------------------------------------------
+    private long getMp3TotalFrames(String path) {
+        try {
+            FileInputStream fis = new FileInputStream(path);
+            MG2D.audio.decoder.Bitstream bitstream = new MG2D.audio.decoder.Bitstream(fis);
+            long frames = 0;
+            while (true) {
+                MG2D.audio.decoder.Header header = bitstream.readFrame();
+                if (header == null) break;
+                frames += (long)(header.ms_per_frame() * 44.1f) * 2;
+                bitstream.closeFrame();
+            }
+            bitstream.close();
+            return frames;
+        } catch (Exception e) {
+            System.out.println("Impossible de lire la durée MP3 : " + e.getMessage());
+            return 0;
+        }
+    }
+
+    // -------------------------------------------------------
+    // Dégradé vert → jaune → rouge selon ratio [0.0 - 1.0]
+    // -------------------------------------------------------
+    private MG2D.geometrie.Couleur couleurDegrade(float ratio) {
+        int r, g, b;
+        if (ratio < 0.5f) {
+            float t = ratio * 2f;
+            r = (int)(t * 255);
+            g = 200;
+            b = (int)(50 - t * 50);
+        } else {
+            float t = (ratio - 0.5f) * 2f;
+            r = (int)(255 - t * 35);
+            g = (int)(200 - t * 170);
+            b = 0;
+        }
+        r = Math.max(0, Math.min(255, r));
+        g = Math.max(0, Math.min(255, g));
+        b = Math.max(0, Math.min(255, b));
+        return new MG2D.geometrie.Couleur(r, g, b);
+    }
+
+    // -------------------------------------------------------
+    // CRÉATION DU JEU
+    // -------------------------------------------------------
     public void CreationJeu(Fenetre f) {
         fen = f;
         W = fen.getWidth();
         H = fen.getHeight();
-        
-        fond1 = new Texture("./img/background/Day/Background.png", new Point(0, 0), W, H);
-        fond2 = new Texture("./img/background/Day/Background.png", new Point(W, 0), W, H);
+
+        fond1 = new Texture("./img/background/Day/Background.png", new Point(0,   0), W, H);
+        fond2 = new Texture("./img/background/Day/Background.png", new Point(W,   0), W, H);
         fond3 = new Texture("./img/background/Day/Background.png", new Point(W*2, 0), W, H);
 
-        sol1 = new Texture("./img/Tiles/Tile_02.png", new Point(0, 0), W, 100);
-        sol2 = new Texture("./img/Tiles/Tile_02.png", new Point(W, 0), W, 100);
+        sol1 = new Texture("./img/Tiles/Tile_02.png", new Point(0,   0), W, 100);
+        sol2 = new Texture("./img/Tiles/Tile_02.png", new Point(W,   0), W, 100);
         sol3 = new Texture("./img/Tiles/Tile_02.png", new Point(W*2, 0), W, 100);
-        
-        plafond1 = new Texture("./img/Tiles/Tile_02_flip.png", new Point(0, H - 100), W, 100);
-        plafond2 = new Texture("./img/Tiles/Tile_02_flip.png", new Point(W, H - 100), W, 100);
+
+        plafond1 = new Texture("./img/Tiles/Tile_02_flip.png", new Point(0,   H - 100), W, 100);
+        plafond2 = new Texture("./img/Tiles/Tile_02_flip.png", new Point(W,   H - 100), W, 100);
         plafond3 = new Texture("./img/Tiles/Tile_02_flip.png", new Point(W*2, H - 100), W, 100);
 
         flashScreen = new Rectangle(MG2D.geometrie.Couleur.BLANC, new Point(0, 0), W, H, true);
 
-        fen.ajouter(fond1);
-        fen.ajouter(fond2);
-        fen.ajouter(fond3);
-        fen.ajouter(sol1);
-        fen.ajouter(sol2);
-        fen.ajouter(sol3);
-        fen.ajouter(plafond1);
-        fen.ajouter(plafond2);
-        fen.ajouter(plafond3);
+        // Barre de progression (fond + barre colorée)
+        barrefond = new Rectangle(
+            new MG2D.geometrie.Couleur(40, 40, 40),
+            new Point(0, H - BAR_H), W, BAR_H, true
+        );
+        barreProgression = new Rectangle(
+            couleurDegrade(0f),
+            new Point(0, H - BAR_H), 1, BAR_H, true
+        );
+
+        fen.ajouter(fond1); fen.ajouter(fond2); fen.ajouter(fond3);
+        fen.ajouter(sol1);  fen.ajouter(sol2);  fen.ajouter(sol3);
+        fen.ajouter(plafond1); fen.ajouter(plafond2); fen.ajouter(plafond3);
+        fen.ajouter(barrefond);
+        fen.ajouter(barreProgression);
 
         clavier = new ClavierBorneArcade();
         fen.addKeyListener(clavier);
@@ -91,6 +151,9 @@ class Jeu {
         fen.ajouter(joueur.getTex());
 
         try {
+            totalFrames = getMp3TotalFrames("./sound/PressStart.mp3");
+            System.out.println("Durée totale estimée (samples) : " + totalFrames);
+
             audioDevice = new MyAudioDevice();
             FileInputStream fis = new FileInputStream("./sound/PressStart.mp3");
             player = new AdvancedPlayer(fis, audioDevice);
@@ -98,17 +161,62 @@ class Jeu {
                 try { player.play(); } catch (Exception e) {}
             }).start();
         } catch (Exception e) {
-            System.out.println("Musique non trouvee");
+            System.out.println("Musique non trouvée");
         }
 
         fen.setVisible(true);
         fen.rafraichir();
     }
 
+ private void afficherVictoire() {
+    fondVictoire = new Rectangle(
+        new MG2D.geometrie.Couleur(200, 160, 0),
+        new Point(0, 0), W, H, true
+    );
+    fondVictoireOverlay = new Rectangle(
+        new MG2D.geometrie.Couleur(0, 0, 0),
+        new Point(W/2 - 320, H/2 - 100), 640, 200, true
+    );
+
+    java.awt.Font fontTitre = new java.awt.Font("Arial", java.awt.Font.BOLD, 72);
+    java.awt.Font fontSous  = new java.awt.Font("Arial", java.awt.Font.PLAIN, 22);
+
+    texteVictoire = new Texte(
+        new MG2D.geometrie.Couleur(255, 220, 0),
+        "YOU WIN !",
+        fontTitre,
+        new Point(W/2 - 160, H/2 + 20)
+    );
+    texteSousVictoire = new Texte(
+        new MG2D.geometrie.Couleur(255, 255, 255),
+        "Félicitations, tu as survécu jusqu'au bout !",
+        fontSous,
+        new Point(W/2 - 290, H/2 - 55)
+    );
+
+    fen.ajouter(fondVictoire);
+    fen.ajouter(fondVictoireOverlay);
+    fen.ajouter(texteVictoire);
+    fen.ajouter(texteSousVictoire);
+    fen.rafraichir();
+}
+
+    // -------------------------------------------------------
+    // BOUCLE DE JEU
+    // Codes de retour :  0 = en cours  |  2 = victoire  |  3 = défaite
+    // -------------------------------------------------------
     public int NewGame(int game) {
         try { Thread.sleep(16); } catch (InterruptedException e) {}
 
-        // Defilement decors
+        // --- Si l'écran de victoire est affiché, on attend puis on renvoie 2 ---
+        if (victoireAffichee) {
+            victoireTimer++;
+            fen.rafraichir();
+            if (victoireTimer >= VICTOIRE_DUREE) return 2;
+            return 0;
+        }
+
+        // Défilement décors
         fond1.translater(-5, 0); fond2.translater(-5, 0); fond3.translater(-5, 0);
         if (fond1.getA().getX() <= -W) fond1.translater(W*3, 0);
         if (fond2.getA().getX() <= -W) fond2.translater(W*3, 0);
@@ -124,71 +232,91 @@ class Jeu {
         if (plafond2.getA().getX() <= -W) plafond2.translater(W*3, 0);
         if (plafond3.getA().getX() <= -W) plafond3.translater(W*3, 0);
 
-        // 4. SPAWN D'OBSTACLES RYTHMÉ SUR L'AMPLITUDE AUDIO (ADAPTATIF)
+        // --- BARRE DE PROGRESSION ---
+        if (audioDevice != null && totalFrames > 0) {
+            float ratio = Math.min(1f, (float) audioDevice.framesPlayed / (float) totalFrames);
+            int barWidth = Math.max(1, (int)(ratio * W));
+
+            fen.supprimer(barreProgression);
+            barreProgression = new Rectangle(
+                couleurDegrade(ratio),
+                new Point(0, H - BAR_H), barWidth, BAR_H, true
+            );
+            fen.ajouter(barreProgression);
+
+            // FIN DE MUSIQUE → déclenche la victoire
+            if (ratio >= 1.0f && !victoireAffichee) {
+                victoireAffichee = true;
+                victoireTimer = 0;
+                afficherVictoire();
+                return 0; // on laisse le timer s'écouler
+            }
+        }
+
+        // --- SPAWN D'OBSTACLES RYTHMÉ SUR L'AMPLITUDE AUDIO ---
         if (cooldown > 0) cooldown--;
         float amp = (audioDevice != null) ? audioDevice.currentAmplitude : 0;
-        
-        // Mise à jour de la moyenne du son pour s'adapter à la musique
-        meanAmplitude = (meanAmplitude * 0.98f) + (amp * 0.02f);
-        if (meanAmplitude < 3000) meanAmplitude = 3000; // Seuil minimum
 
-        // On déclenche sur un pic (amplitude > 130% de la moyenne)
+        meanAmplitude = (meanAmplitude * 0.98f) + (amp * 0.02f);
+        if (meanAmplitude < 3000) meanAmplitude = 3000;
+
         if (amp > meanAmplitude * 1.3f && cooldown == 0) {
-            // Un peu de hasard mais on évite les séries trop longues de pics
             boolean forcePlatform = (consecutiveSpikes >= 2);
-            
+
             if (Math.random() > 0.4 && !forcePlatform) {
-                // --- SPIKES ---
+                // SPIKES
                 consecutivePlatforms = 0;
                 consecutiveSpikes++;
-
-                int samples = (amp > meanAmplitude * 2.0f) ? 2 : 1; // Max 2 spikes pour la difficulté
+                int samples = (amp > meanAmplitude * 2.0f) ? 2 : 1;
                 for (int s = 0; s < samples; s++) {
                     int startY = 100, vitY = 0, ampY = 0;
                     if (amp > meanAmplitude * 2.5f && Math.random() > 0.6) {
                         startY = 150 + (int)(Math.random() * 150);
                         vitY = 4; ampY = 80;
                     }
-                    Texture spike = new Texture("./img/ennemis/spike.png", new Point(W + s * 120, startY), 100, 100);
+                    Texture spike = new Texture("./img/ennemis/spike.png",
+                        new Point(W + s * 120, startY), 100, 100);
                     obstacles.add(new Obstacle(spike, W + s * 120, startY, vitY, ampY, true, false));
                     fen.ajouter(spike);
-                    
+
                     int mirrorY = H - startY - 100;
-                    Texture spikeMir = new Texture("./img/ennemis/spike_flip.png", new Point(W + s * 120, mirrorY), 100, 100);
+                    Texture spikeMir = new Texture("./img/ennemis/spike_flip.png",
+                        new Point(W + s * 120, mirrorY), 100, 100);
                     obstacles.add(new Obstacle(spikeMir, W + s * 120, mirrorY, -vitY, ampY, true, true));
                     fen.ajouter(spikeMir);
                 }
-                cooldown = 40; // Plus de temps pour respirer
+                cooldown = 40;
             } else {
-                // --- PLATEFORMES ---
+                // PLATEFORMES
                 consecutivePlatforms++;
                 consecutiveSpikes = 0;
-
                 if (consecutivePlatforms == 1) lastPlatformY = 100;
                 else {
                     lastPlatformY += 100;
                     if (lastPlatformY > 300) lastPlatformY = 100;
                 }
-                
                 int vitY = 0, ampY = 0;
                 if (amp > meanAmplitude * 2.5f) { vitY = 2; ampY = 100; lastPlatformY = 200; }
-                
-                Texture plat = new Texture("./img/Tiles/Tile_05.png", new Point(W, lastPlatformY), 110, 100);
+
+                Texture plat = new Texture("./img/Tiles/Tile_05.png",
+                    new Point(W, lastPlatformY), 110, 100);
                 obstacles.add(new Obstacle(plat, W, lastPlatformY, vitY, ampY, false, false));
                 fen.ajouter(plat);
-                
+
                 int mirrorY = H - lastPlatformY - 100;
-                Texture platMir = new Texture("./img/Tiles/Tile_05_flip.png", new Point(W, mirrorY), 110, 100);
+                Texture platMir = new Texture("./img/Tiles/Tile_05_flip.png",
+                    new Point(W, mirrorY), 110, 100);
                 obstacles.add(new Obstacle(platMir, W, mirrorY, -vitY, ampY, false, true));
                 fen.ajouter(platMir);
                 cooldown = 25;
             }
         }
 
+        // Flash écran sur pic fort
         if (amp > 18000 && flashTime <= 0) { flashTime = 2; fen.ajouter(flashScreen); }
         if (flashTime > 0) { flashTime--; if (flashTime == 0) fen.supprimer(flashScreen); }
 
-        // Collisions
+        // --- COLLISIONS ---
         int pX = joueur.getTex().getA().getX() + 10;
         int pY = joueur.getTex().getA().getY() + 10;
         int pW = 80, pH = 80;
@@ -196,31 +324,48 @@ class Jeu {
         for (int i = obstacles.size() - 1; i >= 0; i--) {
             Obstacle obs = obstacles.get(i);
             obs.update();
-            if (obs.x < -200) { fen.supprimer(obs.dessin); obstacles.remove(i); }
-            else if (obs.collidesWithPlayer(pX, pY, pW, pH)) {
-                if (obs.isSpike) { return 3; }
-                else {
+            if (obs.x < -200) {
+                fen.supprimer(obs.dessin);
+                obstacles.remove(i);
+            } else if (obs.collidesWithPlayer(pX, pY, pW, pH)) {
+                if (obs.isSpike) {
+                    return 3; // Mort
+                } else {
                     int obsTop = obs.y + 100;
                     if (joueur.getVelocity() < 0 && (pY + 25) >= obsTop) {
                         joueur.getTex().translater(0, obsTop - pY);
-                        joueur.setVelocity(0); joueur.setJumping(false);
-                    } else if (pY < obsTop - 30) { return 3; }
+                        joueur.setVelocity(0);
+                        joueur.setJumping(false);
+                    } else if (pY < obsTop - 30) {
+                        return 3; // Mort
+                    }
                 }
             }
         }
-        
+
         joueur.bougerJoueur(clavier, fen);
         joueur.updatePhysics(100);
         fen.rafraichir();
-        return 0; // On reste a 0 tant qu'on n'est pas mort (3)
+        return 0;
     }
 
+    // -------------------------------------------------------
+    // NETTOYAGE
+    // -------------------------------------------------------
     public void effacerJeu() {
         fen.supprimer(fond1); fen.supprimer(fond2); fen.supprimer(fond3);
-        fen.supprimer(sol1); fen.supprimer(sol2); fen.supprimer(sol3);
+        fen.supprimer(sol1);  fen.supprimer(sol2);  fen.supprimer(sol3);
         fen.supprimer(plafond1); fen.supprimer(plafond2); fen.supprimer(plafond3);
         fen.supprimer(joueur.getTex());
+        fen.supprimer(barrefond);
+        fen.supprimer(barreProgression);
         if (flashTime > 0) fen.supprimer(flashScreen);
+        if (victoireAffichee) {
+            fen.supprimer(fondVictoire);
+            fen.supprimer(fondVictoireOverlay);
+            fen.supprimer(texteVictoire);
+            fen.supprimer(texteSousVictoire);
+        }
         fen.removeKeyListener(clavier);
         fen.getP().removeKeyListener(clavier);
         for (Obstacle obs : obstacles) fen.supprimer(obs.dessin);
