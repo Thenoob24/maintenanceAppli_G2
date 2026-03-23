@@ -61,6 +61,16 @@ class Jeu {
     private Rectangle flashScreen;
     private int flashTime = 0;
 
+    // --- EFFETS RYTHMÉS ---
+    private int shakeTimer = 0;
+    private int shakeOffsetX = 0;
+    private int shakeOffsetY = 0;
+    private Rectangle glowBot;
+    private Rectangle glowTop;
+    private static final int GLOW_H = 6;
+    private float smoothAmplitude = 0;
+    private float currentBarH = BAR_H;
+
     // -------------------------------------------------------
     // Calcule la durée totale du MP3 en samples PCM
     // -------------------------------------------------------
@@ -128,6 +138,14 @@ class Jeu {
 
         flashScreen = new Rectangle(MG2D.geometrie.Couleur.BLANC, new Point(0, 0), W, H, true);
 
+        // Bandes néon pulsantes (sol et plafond)
+        glowBot = new Rectangle(
+                new MG2D.geometrie.Couleur(0, 0, 0),
+                new Point(0, 100), W, GLOW_H, true);
+        glowTop = new Rectangle(
+                new MG2D.geometrie.Couleur(0, 0, 0),
+                new Point(0, H - 100 - GLOW_H), W, GLOW_H, true);
+
         // Barre de progression (fond + barre colorée)
         barrefond = new Rectangle(
                 new MG2D.geometrie.Couleur(40, 40, 40),
@@ -139,6 +157,8 @@ class Jeu {
         fen.ajouter(fond1);
         fen.ajouter(fond2);
         fen.ajouter(fond3);
+        fen.ajouter(glowBot);
+        fen.ajouter(glowTop);
         fen.ajouter(sol1);
         fen.ajouter(sol2);
         fen.ajouter(sol3);
@@ -259,11 +279,18 @@ class Jeu {
         if (audioDevice != null && totalFrames > 0) {
             float ratio = Math.min(1f, (float) audioDevice.framesPlayed / (float) totalFrames);
             int barWidth = Math.max(1, (int) (ratio * W));
+            int drawBarH = Math.max(BAR_H, (int) currentBarH);
+
+            fen.supprimer(barrefond);
+            barrefond = new Rectangle(
+                    new MG2D.geometrie.Couleur(40, 40, 40),
+                    new Point(0, H - drawBarH), W, drawBarH, true);
+            fen.ajouter(barrefond);
 
             fen.supprimer(barreProgression);
             barreProgression = new Rectangle(
                     couleurDegrade(ratio),
-                    new Point(0, H - BAR_H), barWidth, BAR_H, true);
+                    new Point(0, H - drawBarH), barWidth, drawBarH, true);
             fen.ajouter(barreProgression);
 
             // FIN DE MUSIQUE → déclenche la victoire
@@ -343,6 +370,57 @@ class Jeu {
             }
         }
 
+        // --- EFFETS RYTHMÉS (sans flash) ---
+        if (audioDevice != null) {
+            // Lissage de l'amplitude pour des transitions fluides
+            smoothAmplitude = smoothAmplitude * 0.85f + amp * 0.15f;
+            float intensity = Math.min(1f, smoothAmplitude / (meanAmplitude * 2.5f));
+
+            // 1) SCREEN SHAKE sur les pics forts
+            if (amp > meanAmplitude * 2.0f && shakeTimer <= 0) {
+                shakeTimer = 4;
+            }
+            if (shakeTimer > 0) {
+                shakeTimer--;
+                int newShakeX = (int) (Math.random() * 10 - 5);
+                int newShakeY = (int) (Math.random() * 6 - 3);
+                int dx = newShakeX - shakeOffsetX;
+                int dy = newShakeY - shakeOffsetY;
+                fond1.translater(dx, dy); fond2.translater(dx, dy); fond3.translater(dx, dy);
+                sol1.translater(dx, dy); sol2.translater(dx, dy); sol3.translater(dx, dy);
+                plafond1.translater(dx, dy); plafond2.translater(dx, dy); plafond3.translater(dx, dy);
+                shakeOffsetX = newShakeX;
+                shakeOffsetY = newShakeY;
+            } else if (shakeOffsetX != 0 || shakeOffsetY != 0) {
+                // Remettre en place après le shake
+                fond1.translater(-shakeOffsetX, -shakeOffsetY); fond2.translater(-shakeOffsetX, -shakeOffsetY); fond3.translater(-shakeOffsetX, -shakeOffsetY);
+                sol1.translater(-shakeOffsetX, -shakeOffsetY); sol2.translater(-shakeOffsetX, -shakeOffsetY); sol3.translater(-shakeOffsetX, -shakeOffsetY);
+                plafond1.translater(-shakeOffsetX, -shakeOffsetY); plafond2.translater(-shakeOffsetX, -shakeOffsetY); plafond3.translater(-shakeOffsetX, -shakeOffsetY);
+                shakeOffsetX = 0;
+                shakeOffsetY = 0;
+            }
+
+            // 2) BANDES NÉON PULSANTES (violet/bleu → rouge/orange)
+            int oR = (int) (80 + intensity * 175);  // 80 → 255
+            int oG = (int) (20 + (1f - intensity) * 30); // subtil
+            int oB = (int) (180 * (1f - intensity));  // 180 → 0
+            oR = Math.max(0, Math.min(255, oR));
+            oG = Math.max(0, Math.min(255, oG));
+            oB = Math.max(0, Math.min(255, oB));
+            MG2D.geometrie.Couleur glowColor = new MG2D.geometrie.Couleur(oR, oG, oB);
+            fen.supprimer(glowBot);
+            fen.supprimer(glowTop);
+            int glowH = GLOW_H + (int) (intensity * 10); // pulse de 6 à 16px
+            glowBot = new Rectangle(glowColor, new Point(0, 100), W, glowH, true);
+            glowTop = new Rectangle(glowColor, new Point(0, H - 100 - glowH), W, glowH, true);
+            fen.ajouter(glowBot);
+            fen.ajouter(glowTop);
+
+            // 3) BARRE DE PROGRESSION QUI PULSE EN HAUTEUR
+            float targetBarH = BAR_H + intensity * 14; // max ~22px
+            currentBarH = currentBarH * 0.8f + targetBarH * 0.2f;
+        }
+
         // --- COLLISIONS ---
         int pX = joueur.getTex().getA().getX() + 10;
         int pY = joueur.getTex().getA().getY() + 10;
@@ -394,6 +472,14 @@ class Jeu {
         fen.supprimer(barreProgression);
         if (flashTime > 0)
             fen.supprimer(flashScreen);
+        fen.supprimer(glowBot);
+        fen.supprimer(glowTop);
+        // Reset shake si actif
+        if (shakeOffsetX != 0 || shakeOffsetY != 0) {
+            fond1.translater(-shakeOffsetX, -shakeOffsetY); fond2.translater(-shakeOffsetX, -shakeOffsetY); fond3.translater(-shakeOffsetX, -shakeOffsetY);
+            sol1.translater(-shakeOffsetX, -shakeOffsetY); sol2.translater(-shakeOffsetX, -shakeOffsetY); sol3.translater(-shakeOffsetX, -shakeOffsetY);
+            plafond1.translater(-shakeOffsetX, -shakeOffsetY); plafond2.translater(-shakeOffsetX, -shakeOffsetY); plafond3.translater(-shakeOffsetX, -shakeOffsetY);
+        }
         if (victoireAffichee) {
             fen.supprimer(fondVictoire);
             fen.supprimer(fondVictoireOverlay);
