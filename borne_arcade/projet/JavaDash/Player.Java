@@ -1,61 +1,71 @@
 import MG2D.*;
 import MG2D.geometrie.*;
 
-class Player(){
+class Player {  
     
-    /*------- Attribut ------- */
+    /* ------- Attributs ------- */
     private Texture tex;
-    private int Velocity;
+    private int velocity;
     private double gravity;
 
-    /*------- Constructeur ------- */ 
-    public Player(){ //Défault
+    /* ------- Constructeurs ------- */
+    public Player() {
         tex = new Texture("./img/player/img1.png");
-        Velocity = 0;
+        velocity = 0;
         gravity = 0;
     }
 
-    public Player(Player a){ //copie
-    tex = new Texture (a.getTex());
-    Velocity = a.getVelocity();
-    gravity = a.getGravity();
+    public Player(Player a) {
+        tex = new Texture(a.getTex());
+        velocity = a.getVelocity();
+        gravity = a.getGravity();
     }
 
-    public Player(Texture tex, int Velocity, double gravity){ //choix
-        tex = new Texture(tex);
-        this.Velocity = Velocity; 
+    public Player(Texture tex, int velocity, double gravity) {
+        this.tex = new Texture(tex);  
+        this.velocity = velocity;
         this.gravity = gravity;
     }
 
-    /*------- Get && Set ------- */
-    public Texture getTex(){
+    /* ------- Getters & Setters ------- */
+    public Texture getTex() {
         return tex;
     }
 
-    public int getVelocity(){
-        return Velocity;
+    public int getVelocity() {
+        return velocity;
     }
 
-    public int getGravity(){
+    public double getGravity() { 
         return gravity;
     }
 
-    public void setTex(){
+    public void setTex(Texture tex) {  
         this.tex = tex;
     }
 
-    public void setVelocity(){
-        this.Velocity = Velocity;
+    public void setVelocity(int velocity) { 
+        this.velocity = velocity;
     }
 
-    public void setGravity(){
+    public void setGravity(double gravity) {  
         this.gravity = gravity;
     }
 
+    /* ------- Méthodes ------- */
+    public void bougerJoueur(ClavierBorneArcade cla, int yMin, int yMax, int yDecalage, int largeurJoueur, int hauteurJoueur) {
+        if (cla.getJoyJ1HautEnfoncee() && tex.getA().getY() < (yMax - hauteurJoueur - 5) + 152) {
+            tex.translater(0, +yDecalage);
+        }
+    }
 
-    /*------- Méthode ------- */
+    public String toString() {
+        return "Texture : " + tex + "\n Vélocité : " + velocity + "\n Gravité : " + gravity;
 
-    public String toString(){
-        return "Texture : "+tex+"\n Vélocité : "+Velocity+ "\n Gravité : "+gravity;
+    }
+
+    public boolean equals(Player j) { 
+        return (tex.equals(j.getTex())) && (velocity == j.getVelocity()) && (gravity == j.getGravity());
+
     }
 }
