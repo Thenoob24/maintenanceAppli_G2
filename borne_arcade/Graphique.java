@@ -6,8 +6,12 @@ import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
 import java.io.File;
 
-import MG2D.geometrie.*;
+import MG2D.geometrie.Rectangle;
+import MG2D.geometrie.Ligne;
 import MG2D.geometrie.Point;
+import MG2D.geometrie.Texte;
+import MG2D.geometrie.Texture;
+
 import MG2D.audio.*;
 import MG2D.*;
 import MG2D.FenetrePleinEcran;
