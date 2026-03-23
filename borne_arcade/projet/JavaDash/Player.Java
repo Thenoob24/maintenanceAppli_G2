@@ -2,70 +2,66 @@ import MG2D.*;
 import MG2D.geometrie.*;
 
 class Player {  
-    
-    /* ------- Attributs ------- */
     private Texture tex;
-    private int velocity;
+    private double velocity;
     private double gravity;
+    private boolean isJumping;
 
-    /* ------- Constructeurs ------- */
     public Player() {
-        tex = new Texture("./img/player/img1.png");
-        velocity = 0;
-        gravity = 0;
+        this.tex = new Texture("./img/player/img1.png", new Point(200, 100), 100, 100);
+        this.velocity = 0;
+        this.gravity = 1.0; 
+        this.isJumping = false;
     }
 
     public Player(Player a) {
-        tex = new Texture(a.getTex());
-        velocity = a.getVelocity();
-        gravity = a.getGravity();
+        this.tex = new Texture(a.getTex());
+        this.velocity = a.getVelocity();
+        this.gravity = a.getGravity();
+        this.isJumping = a.isJumping();
     }
 
-    public Player(Texture tex, int velocity, double gravity) {
+    public Player(Texture tex, double velocity, double gravity) {
         this.tex = new Texture(tex);  
         this.velocity = velocity;
         this.gravity = gravity;
+        this.isJumping = false;
     }
 
-    /* ------- Getters & Setters ------- */
-    public Texture getTex() {
-        return tex;
+    public Texture getTex() { return tex; }
+    public double getVelocity() { return velocity; }
+    public double getGravity() { return gravity; }
+    public boolean isJumping() { return isJumping; }
+
+    public void setTex(Texture tex) { this.tex = tex; }
+    public void setVelocity(double velocity) { this.velocity = velocity; }
+    public void setGravity(double gravity) { this.gravity = gravity; }
+    public void setJumping(boolean jumping) { this.isJumping = jumping; }
+
+    public void bougerJoueur(ClavierBorneArcade cla) {
+        if (cla.getJoyJ1HautEnfoncee() && !isJumping) {
+            velocity = 20.0;
+            isJumping = true;
+        }
     }
 
-    public int getVelocity() {
-        return velocity;
-    }
+    public void updatePhysics(int groundY) {
+        velocity -= gravity;
+        int dy = (int) velocity;
+        tex.translater(0, dy);
 
-    public double getGravity() { 
-        return gravity;
-    }
-
-    public void setTex(Texture tex) {  
-        this.tex = tex;
-    }
-
-    public void setVelocity(int velocity) { 
-        this.velocity = velocity;
-    }
-
-    public void setGravity(double gravity) {  
-        this.gravity = gravity;
-    }
-
-    /* ------- Méthodes ------- */
-    public void bougerJoueur(ClavierBorneArcade cla, int yMin, int yMax, int yDecalage, int largeurJoueur, int hauteurJoueur) {
-        if (cla.getJoyJ1HautEnfoncee() && tex.getA().getY() < (yMax - hauteurJoueur - 5) + 152) {
-            tex.translater(0, +yDecalage);
+        if (tex.getA().getY() <= groundY) {
+            tex.translater(0, groundY - tex.getA().getY());
+            velocity = 0;
+            isJumping = false;
         }
     }
 
     public String toString() {
         return "Texture : " + tex + "\n Vélocité : " + velocity + "\n Gravité : " + gravity;
-
     }
 
     public boolean equals(Player j) { 
         return (tex.equals(j.getTex())) && (velocity == j.getVelocity()) && (gravity == j.getGravity());
-
     }
 }
