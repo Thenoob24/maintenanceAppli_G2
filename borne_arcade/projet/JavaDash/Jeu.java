@@ -48,6 +48,8 @@ class Jeu {
     private int cooldown = 0;
     private int lastPlatformY = 100;
     private int consecutivePlatforms = 0;
+    private int consecutiveSpikes = 0;
+    private float meanAmplitude = 5000;
     
     private Rectangle flashScreen;
     private int flashTime = 0;
@@ -122,49 +124,64 @@ class Jeu {
         if (plafond2.getA().getX() <= -W) plafond2.translater(W*3, 0);
         if (plafond3.getA().getX() <= -W) plafond3.translater(W*3, 0);
 
-        // Spawn obstacles
+        // 4. SPAWN D'OBSTACLES RYTHMÉ SUR L'AMPLITUDE AUDIO (ADAPTATIF)
         if (cooldown > 0) cooldown--;
         float amp = (audioDevice != null) ? audioDevice.currentAmplitude : 0;
+        
+        // Mise à jour de la moyenne du son pour s'adapter à la musique
+        meanAmplitude = (meanAmplitude * 0.98f) + (amp * 0.02f);
+        if (meanAmplitude < 3000) meanAmplitude = 3000; // Seuil minimum
 
-        if (amp > 6000 && cooldown == 0) {
-            if (Math.random() > 0.5) {
+        // On déclenche sur un pic (amplitude > 130% de la moyenne)
+        if (amp > meanAmplitude * 1.3f && cooldown == 0) {
+            // Un peu de hasard mais on évite les séries trop longues de pics
+            boolean forcePlatform = (consecutiveSpikes >= 2);
+            
+            if (Math.random() > 0.4 && !forcePlatform) {
+                // --- SPIKES ---
                 consecutivePlatforms = 0;
-                int nbSpikes = (amp > 12000) ? 3 : (amp > 9000 ? 2 : 1);
-                for (int s = 0; s < nbSpikes; s++) {
+                consecutiveSpikes++;
+
+                int samples = (amp > meanAmplitude * 2.0f) ? 2 : 1; // Max 2 spikes pour la difficulté
+                for (int s = 0; s < samples; s++) {
                     int startY = 100, vitY = 0, ampY = 0;
-                    if (amp > 15000 && Math.random() > 0.4) {
-                        startY = 150 + (int)(Math.random() * 200);
-                        vitY = 5; ampY = 100;
+                    if (amp > meanAmplitude * 2.5f && Math.random() > 0.6) {
+                        startY = 150 + (int)(Math.random() * 150);
+                        vitY = 4; ampY = 80;
                     }
-                    Texture spike = new Texture("./img/ennemis/spike.png", new Point(W + s * 100, startY), 100, 100);
-                    obstacles.add(new Obstacle(spike, W + s * 100, startY, vitY, ampY, true, false));
+                    Texture spike = new Texture("./img/ennemis/spike.png", new Point(W + s * 120, startY), 100, 100);
+                    obstacles.add(new Obstacle(spike, W + s * 120, startY, vitY, ampY, true, false));
                     fen.ajouter(spike);
                     
                     int mirrorY = H - startY - 100;
-                    Texture spikeMir = new Texture("./img/ennemis/spike_flip.png", new Point(W + s * 100, mirrorY), 100, 100);
-                    obstacles.add(new Obstacle(spikeMir, W + s * 100, mirrorY, -vitY, ampY, true, true));
+                    Texture spikeMir = new Texture("./img/ennemis/spike_flip.png", new Point(W + s * 120, mirrorY), 100, 100);
+                    obstacles.add(new Obstacle(spikeMir, W + s * 120, mirrorY, -vitY, ampY, true, true));
                     fen.ajouter(spikeMir);
                 }
-                cooldown = nbSpikes * 10 + 20;
+                cooldown = 40; // Plus de temps pour respirer
             } else {
+                // --- PLATEFORMES ---
                 consecutivePlatforms++;
+                consecutiveSpikes = 0;
+
                 if (consecutivePlatforms == 1) lastPlatformY = 100;
                 else {
                     lastPlatformY += 100;
-                    if (consecutivePlatforms > 2) { lastPlatformY = 100; consecutivePlatforms = 1; }
+                    if (lastPlatformY > 300) lastPlatformY = 100;
                 }
-                int vitY = 0, ampY = 0;
-                if (amp > 16000 && consecutivePlatforms == 1) { vitY = 3; ampY = 150; lastPlatformY = 300; }
                 
-                Texture plat = new Texture("./img/Tiles/Tile_05.png", new Point(W, lastPlatformY), 100, 100);
+                int vitY = 0, ampY = 0;
+                if (amp > meanAmplitude * 2.5f) { vitY = 2; ampY = 100; lastPlatformY = 200; }
+                
+                Texture plat = new Texture("./img/Tiles/Tile_05.png", new Point(W, lastPlatformY), 110, 100);
                 obstacles.add(new Obstacle(plat, W, lastPlatformY, vitY, ampY, false, false));
                 fen.ajouter(plat);
                 
                 int mirrorY = H - lastPlatformY - 100;
-                Texture platMir = new Texture("./img/Tiles/Tile_05_flip.png", new Point(W, mirrorY), 100, 100);
+                Texture platMir = new Texture("./img/Tiles/Tile_05_flip.png", new Point(W, mirrorY), 110, 100);
                 obstacles.add(new Obstacle(platMir, W, mirrorY, -vitY, ampY, false, true));
                 fen.ajouter(platMir);
-                cooldown = 10;
+                cooldown = 25;
             }
         }
 
