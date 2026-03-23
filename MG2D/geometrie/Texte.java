@@ -26,7 +26,7 @@
 
 package MG2D.geometrie;
 
-import MG2D.Couleur;
+
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
@@ -36,7 +36,7 @@ import java.awt.image.BufferedImage;
  * Cette classe permet la création de textes.<br />
  * Un Texte est définie par une chaîne de caractères, d'une police de texte et d'un Point.
  * @author Equipe 2D, Rémi Synave
- * @version 2.9
+ * @version 2.8
  */
 public class Texte extends Dessin {
 

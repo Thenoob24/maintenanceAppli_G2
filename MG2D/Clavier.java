@@ -37,7 +37,7 @@ import java.awt.event.KeyListener;
  * Elle permet de gérer le clavier dans des applications développées avec la bibliotheque MG2D.<br />
  * Elle fonctionne sur le principe de booléen que l'on change quand on appuie ou relâche les touches.
  * @author Equipe 2D, Remi Synave
- * @version 2.9
+ * @version 2.8
  */
 public class Clavier implements KeyListener {
 

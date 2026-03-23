@@ -37,7 +37,7 @@ import java.awt.GraphicsEnvironment;
  * L'utilisateur peut définir un titre, une largeur et une hauteur à cette fenêtre.<br />
  * Par la suite, il pourra, au travers de cette classe, gérer un ensemble de formes affichés.
  * @author Equipe 2D, Rémi Synave
- * @version 2.9
+ * @version 2.8
  */
 public class FenetrePleinEcran extends Fenetre {
 

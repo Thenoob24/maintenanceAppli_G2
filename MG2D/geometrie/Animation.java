@@ -26,7 +26,7 @@
 
 package MG2D.geometrie;
 
-import MG2D.Couleur;
+
 import java.awt.Graphics;
 import java.awt.image.BufferedImage;
 
@@ -44,7 +44,7 @@ import javax.imageio.ImageIO;
  * Il est également possible de savoir à tout moment le nombre de fois que l'animation a été jouée.<br />
  * Cette classe n'a pas vraiment été testée... Merci de faire remonter les bugs :-)<br />
  * @author Rémi Synave
- * @version 2.9
+ * @version 2.7
  * @see Texture
  */
 public class Animation extends Texture {
@@ -290,11 +290,7 @@ public class Animation extends Texture {
     public void setNumeroImage(String str){
 	/*TODO - Vérifier que le numéro appartient bien à l'ensemble d'images*/
 	numeroImageCourante=new String(str);
-	int largeur=getLargeur();
-	int hauteur=getHauteur();
 	setImg(racineCheminImage+numeroImageCourante+"."+extensionImage);
-	setLargeur(largeur);
-	setHauteur(hauteur);
     }
 
 
@@ -308,11 +304,7 @@ public class Animation extends Texture {
     public void afficher ( Graphics g ) {
 	if(lecture){
 	    imageSuivante();
-	    int largeur=getLargeur();
-	    int hauteur=getHauteur();
 	    setImg(racineCheminImage+numeroImageCourante+"."+extensionImage);
-	    setLargeur(largeur);
-	    setHauteur(hauteur);
 	}
 
 	super.afficher(g);

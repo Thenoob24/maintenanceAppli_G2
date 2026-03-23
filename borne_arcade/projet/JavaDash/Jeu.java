@@ -9,6 +9,9 @@ import java.util.ArrayList;
 
 class Jeu {
     private Fenetre fen;
+    private int W;
+    private int H;
+    
     private Texture fond1;
     private Texture fond2;
     private Texture fond3;
@@ -23,8 +26,6 @@ class Jeu {
     private ClavierBorneArcade clavier;
     private Player joueur;
 
-    // Classe interne pour surcharger le lecteur et intercepter l'amplitude (sans
-    // modifier MG2D !)
     class MyAudioDevice extends JavaSoundAudioDevice {
         public volatile float currentAmplitude = 0;
 
@@ -43,34 +44,32 @@ class Jeu {
         }
     }
 
-
     private ArrayList<Obstacle> obstacles = new ArrayList<Obstacle>();
     private int cooldown = 0;
-
     private int lastPlatformY = 100;
     private int consecutivePlatforms = 0;
     
     private Rectangle flashScreen;
     private int flashTime = 0;
 
-    public void CreationJeu() {
-        fen = new FenetrePleinEcran("JavaDash");
-        fond1 = new Texture("./img/background/Day/Background.png", new Point(0, 0), 1280, 1024);
-        fond2 = new Texture("./img/background/Day/Background.png", new Point(1280, 0), 1280, 1024);
-        fond3 = new Texture("./img/background/Day/Background.png", new Point(2560, 0), 1280, 1024);
-
-        // Ground textures (sol)
-        sol1 = new Texture("./img/Tiles/Tile_02.png", new Point(0, 0), 1280, 100);
-        sol2 = new Texture("./img/Tiles/Tile_02.png", new Point(1280, 0), 1280, 100);
-        sol3 = new Texture("./img/Tiles/Tile_02.png", new Point(2560, 0), 1280, 100);
+    public void CreationJeu(Fenetre f) {
+        fen = f;
+        W = fen.getWidth();
+        H = fen.getHeight();
         
-        // Ceiling textures (plafond)
-        plafond1 = new Texture("./img/Tiles/Tile_02_flip.png", new Point(0, 924), 1280, 100);
-        plafond2 = new Texture("./img/Tiles/Tile_02_flip.png", new Point(1280, 924), 1280, 100);
-        plafond3 = new Texture("./img/Tiles/Tile_02_flip.png", new Point(2560, 924), 1280, 100);
+        fond1 = new Texture("./img/background/Day/Background.png", new Point(0, 0), W, H);
+        fond2 = new Texture("./img/background/Day/Background.png", new Point(W, 0), W, H);
+        fond3 = new Texture("./img/background/Day/Background.png", new Point(W*2, 0), W, H);
 
-        // Strobing light effect (Effet Lumineux)
-        flashScreen = new Rectangle(MG2D.geometrie.Couleur.BLANC, new Point(0, 0), 1280, 1024, true);
+        sol1 = new Texture("./img/Tiles/Tile_02.png", new Point(0, 0), W, 100);
+        sol2 = new Texture("./img/Tiles/Tile_02.png", new Point(W, 0), W, 100);
+        sol3 = new Texture("./img/Tiles/Tile_02.png", new Point(W*2, 0), W, 100);
+        
+        plafond1 = new Texture("./img/Tiles/Tile_02_flip.png", new Point(0, H - 100), W, 100);
+        plafond2 = new Texture("./img/Tiles/Tile_02_flip.png", new Point(W, H - 100), W, 100);
+        plafond3 = new Texture("./img/Tiles/Tile_02_flip.png", new Point(W*2, H - 100), W, 100);
+
+        flashScreen = new Rectangle(MG2D.geometrie.Couleur.BLANC, new Point(0, 0), W, H, true);
 
         fen.ajouter(fond1);
         fen.ajouter(fond2);
@@ -89,224 +88,126 @@ class Jeu {
         joueur = new Player();
         fen.ajouter(joueur.getTex());
 
-        // Charger la musique via notre lecteur custom
         try {
             audioDevice = new MyAudioDevice();
             FileInputStream fis = new FileInputStream("./sound/PressStart.mp3");
             player = new AdvancedPlayer(fis, audioDevice);
-
-            // Lancer la musique dans un thread séparé pour ne pas bloquer le jeu
-            new Thread(new Runnable() {
-                public void run() {
-                    try {
-                        player.play();
-                    } catch (Exception e) {
-                    }
-                }
+            new Thread(() -> {
+                try { player.play(); } catch (Exception e) {}
             }).start();
         } catch (Exception e) {
-            System.out.println("Musique non trouvée, le jeu continue sans.");
+            System.out.println("Musique non trouvee");
         }
 
         fen.setVisible(true);
         fen.rafraichir();
     }
 
-
-
     public int NewGame(int game) {
-        try {
-            Thread.sleep(16); // ~60 FPS
-        } catch (InterruptedException e) {}
+        try { Thread.sleep(16); } catch (InterruptedException e) {}
 
-        // ------------------------------------------------------------------
-        // 1. DÉFILEMENT DU FOND (vitesse x2 plus lente que les obstacles)
-        // ------------------------------------------------------------------
-        fond1.translater(-5, 0);
-        fond2.translater(-5, 0);
-        fond3.translater(-5, 0);
-        if (fond1.getA().getX() <= -1280) fond1.translater(3840, 0);
-        if (fond2.getA().getX() <= -1280) fond2.translater(3840, 0);
-        if (fond3.getA().getX() <= -1280) fond3.translater(3840, 0);
+        // Defilement decors
+        fond1.translater(-5, 0); fond2.translater(-5, 0); fond3.translater(-5, 0);
+        if (fond1.getA().getX() <= -W) fond1.translater(W*3, 0);
+        if (fond2.getA().getX() <= -W) fond2.translater(W*3, 0);
+        if (fond3.getA().getX() <= -W) fond3.translater(W*3, 0);
 
-        // ------------------------------------------------------------------
-        // 2. DÉFILEMENT DU SOL
-        // ------------------------------------------------------------------
-        sol1.translater(-10, 0);
-        sol2.translater(-10, 0);
-        sol3.translater(-10, 0);
-        if (sol1.getA().getX() <= -1280) sol1.translater(3840, 0);
-        if (sol2.getA().getX() <= -1280) sol2.translater(3840, 0);
-        if (sol3.getA().getX() <= -1280) sol3.translater(3840, 0);
+        sol1.translater(-10, 0); sol2.translater(-10, 0); sol3.translater(-10, 0);
+        if (sol1.getA().getX() <= -W) sol1.translater(W*3, 0);
+        if (sol2.getA().getX() <= -W) sol2.translater(W*3, 0);
+        if (sol3.getA().getX() <= -W) sol3.translater(W*3, 0);
 
-        // ------------------------------------------------------------------
-        // 3. DÉFILEMENT DU PLAFOND
-        // ------------------------------------------------------------------
-        plafond1.translater(-10, 0);
-        plafond2.translater(-10, 0);
-        plafond3.translater(-10, 0);
-        if (plafond1.getA().getX() <= -1280) plafond1.translater(3840, 0);
-        if (plafond2.getA().getX() <= -1280) plafond2.translater(3840, 0);
-        if (plafond3.getA().getX() <= -1280) plafond3.translater(3840, 0);
+        plafond1.translater(-10, 0); plafond2.translater(-10, 0); plafond3.translater(-10, 0);
+        if (plafond1.getA().getX() <= -W) plafond1.translater(W*3, 0);
+        if (plafond2.getA().getX() <= -W) plafond2.translater(W*3, 0);
+        if (plafond3.getA().getX() <= -W) plafond3.translater(W*3, 0);
 
-        // ------------------------------------------------------------------
-        // 4. SPAWN D'OBSTACLES RYTHMÉ SUR L'AMPLITUDE AUDIO
-        // ------------------------------------------------------------------
+        // Spawn obstacles
         if (cooldown > 0) cooldown--;
         float amp = (audioDevice != null) ? audioDevice.currentAmplitude : 0;
 
         if (amp > 6000 && cooldown == 0) {
-
             if (Math.random() > 0.5) {
-                // --- SPIKES ---
                 consecutivePlatforms = 0;
-
-                int nbSpikes = 1;
-                if      (amp > 12000) nbSpikes = 3;
-                else if (amp > 9000)  nbSpikes = 2;
-
+                int nbSpikes = (amp > 12000) ? 3 : (amp > 9000 ? 2 : 1);
                 for (int s = 0; s < nbSpikes; s++) {
-                    int startY = 100;
-                    int vitY   = 0;
-                    int ampY   = 0;
-
-                    // Spike mobile si amplitude très forte
+                    int startY = 100, vitY = 0, ampY = 0;
                     if (amp > 15000 && Math.random() > 0.4) {
                         startY = 150 + (int)(Math.random() * 200);
-                        vitY   = 5;
-                        ampY   = 100;
+                        vitY = 5; ampY = 100;
                     }
-
-                    // Spike sol
-                    Texture spike = new Texture(
-                        "./img/ennemis/spike.png",
-                        new Point(1280 + s * 100, startY), 100, 100);
-                    obstacles.add(new Obstacle(spike, 1280 + s * 100, startY, vitY, ampY, true, false));
+                    Texture spike = new Texture("./img/ennemis/spike.png", new Point(W + s * 100, startY), 100, 100);
+                    obstacles.add(new Obstacle(spike, W + s * 100, startY, vitY, ampY, true, false));
                     fen.ajouter(spike);
-
-                    // Spike miroir plafond
-                    int mirrorY = 1024 - startY - 100;
-                    Texture spikeMir = new Texture(
-                        "./img/ennemis/spike_flip.png",
-                        new Point(1280 + s * 100, mirrorY), 100, 100);
-                    obstacles.add(new Obstacle(spikeMir, 1280 + s * 100, mirrorY, -vitY, ampY, true, true));
+                    
+                    int mirrorY = H - startY - 100;
+                    Texture spikeMir = new Texture("./img/ennemis/spike_flip.png", new Point(W + s * 100, mirrorY), 100, 100);
+                    obstacles.add(new Obstacle(spikeMir, W + s * 100, mirrorY, -vitY, ampY, true, true));
                     fen.ajouter(spikeMir);
                 }
-
                 cooldown = nbSpikes * 10 + 20;
-
             } else {
-                // --- PLATEFORMES EN ESCALIER ---
                 consecutivePlatforms++;
-                if (consecutivePlatforms == 1) {
-                    lastPlatformY = 100;
-                } else {
+                if (consecutivePlatforms == 1) lastPlatformY = 100;
+                else {
                     lastPlatformY += 100;
-                    if (consecutivePlatforms > 2) {
-                        lastPlatformY = 100;
-                        consecutivePlatforms = 1;
-                    }
+                    if (consecutivePlatforms > 2) { lastPlatformY = 100; consecutivePlatforms = 1; }
                 }
-
-                int vitY = 0;
-                int ampY = 0;
-                // Plateforme mobile si amplitude massive
-                if (amp > 16000 && consecutivePlatforms == 1) {
-                    vitY = 3;
-                    ampY = 150;
-                    lastPlatformY = 300;
-                }
-
-                // Plateforme sol
-                Texture plat = new Texture(
-                    "./img/Tiles/Tile_05.png",
-                    new Point(1280, lastPlatformY), 100, 100);
-                obstacles.add(new Obstacle(plat, 1280, lastPlatformY, vitY, ampY, false, false));
+                int vitY = 0, ampY = 0;
+                if (amp > 16000 && consecutivePlatforms == 1) { vitY = 3; ampY = 150; lastPlatformY = 300; }
+                
+                Texture plat = new Texture("./img/Tiles/Tile_05.png", new Point(W, lastPlatformY), 100, 100);
+                obstacles.add(new Obstacle(plat, W, lastPlatformY, vitY, ampY, false, false));
                 fen.ajouter(plat);
-
-                // Plateforme miroir plafond
-                int mirrorY = 1024 - lastPlatformY - 100;
-                Texture platMir = new Texture(
-                    "./img/Tiles/Tile_05_flip.png",
-                    new Point(1280, mirrorY), 100, 100);
-                obstacles.add(new Obstacle(platMir, 1280, mirrorY, -vitY, ampY, false, true));
+                
+                int mirrorY = H - lastPlatformY - 100;
+                Texture platMir = new Texture("./img/Tiles/Tile_05_flip.png", new Point(W, mirrorY), 100, 100);
+                obstacles.add(new Obstacle(platMir, W, mirrorY, -vitY, ampY, false, true));
                 fen.ajouter(platMir);
-
                 cooldown = 10;
             }
         }
 
-        // ------------------------------------------------------------------
-        // 5. EFFET FLASH ÉCRAN (amplitude hardcore)
-        // ------------------------------------------------------------------
-        if (amp > 18000 && flashTime <= 0) {
-            flashTime = 2;
-            fen.ajouter(flashScreen);
-        }
-        if (flashTime > 0) {
-            flashTime--;
-            if (flashTime == 0) {
-                fen.supprimer(flashScreen);
-            }
-        }
+        if (amp > 18000 && flashTime <= 0) { flashTime = 2; fen.ajouter(flashScreen); }
+        if (flashTime > 0) { flashTime--; if (flashTime == 0) fen.supprimer(flashScreen); }
 
-        // ------------------------------------------------------------------
-        // 6. MISE À JOUR DES OBSTACLES + COLLISIONS
-        // ------------------------------------------------------------------
-        int pX = joueur.getTex().getA().getX();
-        int pY = joueur.getTex().getA().getY();
-        int pW = 80; // largeur hitbox joueur — adapte à ta texture
-        int pH = 80; // hauteur hitbox joueur — adapte à ta texture
-
-        boolean collisionTop = false;
+        // Collisions
+        int pX = joueur.getTex().getA().getX() + 10;
+        int pY = joueur.getTex().getA().getY() + 10;
+        int pW = 80, pH = 80;
 
         for (int i = obstacles.size() - 1; i >= 0; i--) {
             Obstacle obs = obstacles.get(i);
             obs.update();
-
-            // Suppression hors écran
-            if (obs.x < -200) {
-                fen.supprimer(obs.dessin);
-                obstacles.remove(i);
-                continue;
-            }
-
-            // Test de collision précis
-            if (obs.collidesWithPlayer(pX, pY, pW, pH)) {
-                if (obs.isSpike) {
-                    // Spike : mort immédiate
-                    System.out.println("BOOM! Spike hit.");
-                    return 3;
-
-                } else {
-                    // Plateforme : atterrissage ou crash
-                    int obsTop = obs.y + 100; // bord supérieur de la plateforme
-
+            if (obs.x < -200) { fen.supprimer(obs.dessin); obstacles.remove(i); }
+            else if (obs.collidesWithPlayer(pX, pY, pW, pH)) {
+                if (obs.isSpike) { return 3; }
+                else {
+                    int obsTop = obs.y + 100;
                     if (joueur.getVelocity() < 0 && (pY + 25) >= obsTop) {
-                        // Le joueur tombe et atterrit sur le dessus
                         joueur.getTex().translater(0, obsTop - pY);
-                        joueur.setVelocity(0);
-                        joueur.setJumping(false);
-                        collisionTop = true;
-                    } else if (pY < obsTop - 30) {
-                        // Impact sur le mur vertical de la plateforme
-                        System.out.println("CRASH! Platform wall hit.");
-                        return 3;
-                    }
+                        joueur.setVelocity(0); joueur.setJumping(false);
+                    } else if (pY < obsTop - 30) { return 3; }
                 }
             }
         }
-
-        // ------------------------------------------------------------------
-        // 7. PHYSIQUE ET INPUT JOUEUR
-        // ------------------------------------------------------------------
-        joueur.bougerJoueur(clavier);
+        
+        joueur.bougerJoueur(clavier, fen);
         joueur.updatePhysics(100);
-
-        // ------------------------------------------------------------------
-        // 8. RAFRAÎCHISSEMENT
-        // ------------------------------------------------------------------
         fen.rafraichir();
-        return game = 1;
+        return 0; // On reste a 0 tant qu'on n'est pas mort (3)
+    }
+
+    public void effacerJeu() {
+        fen.supprimer(fond1); fen.supprimer(fond2); fen.supprimer(fond3);
+        fen.supprimer(sol1); fen.supprimer(sol2); fen.supprimer(sol3);
+        fen.supprimer(plafond1); fen.supprimer(plafond2); fen.supprimer(plafond3);
+        fen.supprimer(joueur.getTex());
+        if (flashTime > 0) fen.supprimer(flashScreen);
+        fen.removeKeyListener(clavier);
+        fen.getP().removeKeyListener(clavier);
+        for (Obstacle obs : obstacles) fen.supprimer(obs.dessin);
+        obstacles.clear();
+        if (player != null) player.close();
     }
 }

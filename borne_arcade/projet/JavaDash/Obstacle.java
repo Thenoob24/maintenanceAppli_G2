@@ -78,13 +78,13 @@ import java.util.ArrayList;
 
         int ax, ay, bx, by, cx, cy;
         if (pointingUp) {
-            ax = tx;       ay = ty + 100; // bas-gauche
-            bx = tx + 100; by = ty + 100; // bas-droite
-            cx = tx + 50;  cy = ty;       // pointe haute
+            ax = tx;       ay = ty;        // bas-gauche
+            bx = tx + 100; by = ty;        // bas-droite
+            cx = tx + 50;  cy = ty + 100;  // pointe haute (tip up)
         } else {
-            ax = tx;       ay = ty;        // haut-gauche
-            bx = tx + 100; by = ty;        // haut-droite
-            cx = tx + 50;  cy = ty + 100;  // pointe basse
+            ax = tx;       ay = ty + 100;  // haut-gauche
+            bx = tx + 100; by = ty + 100;  // haut-droite
+            cx = tx + 50;  cy = ty;        // pointe basse (tip down)
         }
 
         // On teste les 4 coins du rectangle joueur contre le triangle

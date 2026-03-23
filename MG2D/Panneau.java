@@ -39,7 +39,7 @@ import javax.swing.JPanel;
  * Cette classe créée une zone d'affichage qui sera incorporée dans un objet de type Fenetre. Cette classe ne devrait, à priori, jamais être instanciée directement par un développeur. Cette classe intégre une liste de formes (Dessin).<br />
  * L'utilisateur peut ajouter ou supprimer un dessin et effacer un Panneau en passant par la classe Fenetre. Il n'a donc pas à appliquer des méthodes sur des objets de type Panneau. Pour chaque méthode de cette classe, il existe une émthode dans la classe Fenetre qui y fait référence.
  * @author Equipe 2D, Rémi Synave
- * @version 2.9
+ * @version 2.2
  * @see Fenetre
  * @see Dessin
  */
