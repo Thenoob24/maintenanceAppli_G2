@@ -39,7 +39,8 @@ class Jeu {
     private boolean victoireAffichee = false;
     private int victoireTimer = 0;
     private static final int VICTOIRE_DUREE = 180;
-    private Texte texteAmplitude;
+    private Texte texteScore;
+    private int score = 0;
 
     // --- ÉCRAN DE DÉFAITE ---
     private Texte texteDefaite;
@@ -235,9 +236,9 @@ class Jeu {
         fen.ajouter(barreProgression);
 
         java.awt.Font fontAmp = new java.awt.Font("Arial", java.awt.Font.BOLD, 18);
-        texteAmplitude = new Texte(new MG2D.geometrie.Couleur(255, 255, 255), "Amplitude : 0", fontAmp,
+        texteScore = new Texte(new MG2D.geometrie.Couleur(255, 255, 255), "Score : 0", fontAmp,
                 new Point(W - 200, H - 50));
-        fen.ajouter(texteAmplitude);
+        fen.ajouter(texteScore);
 
         clavier = new ClavierBorneArcade();
         fen.addKeyListener(clavier);
@@ -303,8 +304,8 @@ class Jeu {
         texteDefaite = new Texte(new MG2D.geometrie.Couleur(255, 60, 60), "Vous avez perdu !", fontTitre,
                 new Point(W / 2 - 240, H / 2 + 20));
         texteSousDefaite = new Texte(new MG2D.geometrie.Couleur(255, 255, 255),
-                "Retentez votre chance...", fontSous,
-                new Point(W / 2 - 150, H / 2 - 55));
+                "Score final : " + score + " | Retentez votre chance...", fontSous,
+                new Point(W / 2 - 240, H / 2 - 55));
 
         fen.ajouter(texteDefaite);
         fen.ajouter(texteSousDefaite);
@@ -399,14 +400,13 @@ class Jeu {
             }
         }
 
-        // --- MAJ AFFICHAGE AMPLITUDE ---
-        if (audioDevice != null) {
-            fen.supprimer(texteAmplitude);
-            java.awt.Font fontAmp = new java.awt.Font("Arial", java.awt.Font.BOLD, 18);
-            texteAmplitude = new Texte(new MG2D.geometrie.Couleur(255, 255, 255),
-                    "Amplitude : " + (int) audioDevice.currentAmplitude, fontAmp, new Point(W - 200, H - 50));
-            fen.ajouter(texteAmplitude);
-        }
+        // --- MAJ SCORE ---
+        score++;
+        fen.supprimer(texteScore);
+        java.awt.Font fontAmp = new java.awt.Font("Arial", java.awt.Font.BOLD, 18);
+        texteScore = new Texte(new MG2D.geometrie.Couleur(255, 255, 255),
+                "Score : " + score, fontAmp, new Point(W - 200, H - 50));
+        fen.ajouter(texteScore);
 
         // --- AMPLITUDE COURANTE ---
         float amp = (audioDevice != null) ? audioDevice.currentAmplitude : 0;
@@ -678,6 +678,7 @@ class Jeu {
         fen.supprimer(joueur.getTex());
         fen.supprimer(barrefond);
         fen.supprimer(barreProgression);
+        fen.supprimer(texteScore);
         fen.supprimer(glowBot);
         fen.supprimer(glowTop);
 
