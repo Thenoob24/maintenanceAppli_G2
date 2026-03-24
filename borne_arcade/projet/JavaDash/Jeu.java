@@ -41,6 +41,13 @@ class Jeu {
     private static final int VICTOIRE_DUREE = 180;
     private Texte texteAmplitude;
 
+    // --- ÉCRAN DE DÉFAITE ---
+    private Texte texteDefaite;
+    private Texte texteSousDefaite;
+    private boolean defaiteAffichee = false;
+    private int defaiteTimer = 0;
+    private static final int DEFAITE_DUREE = 180;
+
     /**
      * Classe interne pour capturer l'amplitude sonore en temps réel.
      * Étend JavaSoundAudioDevice pour analyser les échantillons audio joués.
@@ -69,12 +76,11 @@ class Jeu {
     private float meanAmplitude = 2000;
 
     // --- DÉTECTION DE BEAT ---
-    // On garde un historique court d'amplitudes pour détecter les vraies montées
     private float[] ampHistory = new float[8];
     private int ampHistIdx = 0;
-    private float localMean = 2000; // moyenne locale (fenêtre courte) pour le beat
-    private boolean wasOnBeat = false; // évite les doubles déclenchements
-    private static final float BEAT_THRESHOLD = 1.6f; // ratio local pour considérer un beat
+    private float localMean = 2000;
+    private boolean wasOnBeat = false;
+    private static final float BEAT_THRESHOLD = 1.6f;
 
     // --- EFFETS RYTHMÉS ---
     private int shakeTimer = 0;
@@ -87,7 +93,6 @@ class Jeu {
     private float currentBarH = BAR_H;
 
     // --- PLATEFORMES SCALÉES PAR AMPLITUDE ---
-    // Chaque plateforme stocke sa taille "cible" et pulse visuellement
     private static final int PLAT_W_MIN = 80;
     private static final int PLAT_W_MAX = 200;
     private static final int PLAT_H_BASE = 30;
@@ -101,7 +106,7 @@ class Jeu {
     private String currentSolPath = "./img/Tiles/Tile_02.png";
     private String currentSolFlipPath = "./img/Tiles/Tile_02_flip.png";
 
-    // --- SEUILS D'AMPLITUDE (Multiplicateurs de meanAmplitude) ---
+    // --- SEUILS D'AMPLITUDE ---
     private static final float THRESHOLD_POPUP = 1.5f;
     private static final float THRESHOLD_SHAKE = 2.0f;
     private static final float THRESHOLD_GRAVITY = 5.0f;
@@ -162,20 +167,16 @@ class Jeu {
 
     // -------------------------------------------------------
     // Détecte si l'amplitude courante représente un "beat"
-    // en comparant à la moyenne locale (fenêtre glissante courte)
     // -------------------------------------------------------
     /**
      * Détecte si l'amplitude actuelle correspond à un "beat" musical.
-     * Utilise une moyenne glissante locale pour identifier les pics brusques.
      * @param amp L'amplitude sonore actuelle.
      * @return Vrai si un beat est détecté (front montant).
      */
     private boolean detectBeat(float amp) {
-        // Met à jour l'historique circulaire
         ampHistory[ampHistIdx % ampHistory.length] = amp;
         ampHistIdx++;
 
-        // Calcule la moyenne locale sur la fenêtre
         float sum = 0;
         for (float v : ampHistory)
             sum += v;
@@ -184,8 +185,6 @@ class Jeu {
             localMean = 3000;
 
         boolean onBeat = (amp > localMean * BEAT_THRESHOLD);
-
-        // Front montant seulement (pas de maintien)
         boolean isBeatEdge = onBeat && !wasOnBeat;
         wasOnBeat = onBeat;
         return isBeatEdge;
@@ -195,8 +194,7 @@ class Jeu {
     // CRÉATION DU JEU
     // -------------------------------------------------------
     /**
-     * Initialise tous les éléments du jeu : décors, barre de progression,
-     * clavier, joueur et moteur audio.
+     * Initialise tous les éléments du jeu.
      * @param f La fenêtre MG2D à utiliser.
      */
     public void CreationJeu(Fenetre f) {
@@ -216,11 +214,9 @@ class Jeu {
         plafond2 = new Texture("./img/Tiles/Tile_02_flip.png", new Point(W, H - 100), W, 100);
         plafond3 = new Texture("./img/Tiles/Tile_02_flip.png", new Point(W * 2, H - 100), W, 100);
 
-        // Bandes néon pulsantes (sol et plafond)
         glowBot = new Rectangle(new MG2D.geometrie.Couleur(0, 0, 0), new Point(0, 100), W, GLOW_H, true);
         glowTop = new Rectangle(new MG2D.geometrie.Couleur(0, 0, 0), new Point(0, H - 100 - GLOW_H), W, GLOW_H, true);
 
-        // Barre de progression (fond + barre colorée)
         barrefond = new Rectangle(new MG2D.geometrie.Couleur(40, 40, 40), new Point(0, H - BAR_H), W, BAR_H, true);
         barreProgression = new Rectangle(couleurDegrade(0f), new Point(0, H - BAR_H), 1, BAR_H, true);
 
@@ -271,6 +267,9 @@ class Jeu {
         fen.rafraichir();
     }
 
+    // -------------------------------------------------------
+    // ÉCRAN DE VICTOIRE
+    // -------------------------------------------------------
     private void afficherVictoire() {
         fondVictoire = new Rectangle(new MG2D.geometrie.Couleur(200, 160, 0), new Point(0, 0), W, H, true);
         fondVictoireOverlay = new Rectangle(new MG2D.geometrie.Couleur(0, 0, 0), new Point(W / 2 - 320, H / 2 - 100),
@@ -292,12 +291,32 @@ class Jeu {
     }
 
     // -------------------------------------------------------
+    // ÉCRAN DE DÉFAITE
+    // -------------------------------------------------------
+    /**
+     * Affiche l'écran de défaite avec le message "Vous avez perdu !".
+     */
+    private void afficherDefaite() {
+        java.awt.Font fontTitre = new java.awt.Font("Arial", java.awt.Font.BOLD, 72);
+        java.awt.Font fontSous  = new java.awt.Font("Arial", java.awt.Font.PLAIN, 22);
+
+        texteDefaite = new Texte(new MG2D.geometrie.Couleur(255, 60, 60), "Vous avez perdu !", fontTitre,
+                new Point(W / 2 - 240, H / 2 + 20));
+        texteSousDefaite = new Texte(new MG2D.geometrie.Couleur(255, 255, 255),
+                "Retentez votre chance...", fontSous,
+                new Point(W / 2 - 150, H / 2 - 55));
+
+        fen.ajouter(texteDefaite);
+        fen.ajouter(texteSousDefaite);
+        fen.rafraichir();
+    }
+
+    // -------------------------------------------------------
     // BOUCLE DE JEU
     // Codes de retour : 0 = en cours | 2 = victoire | 3 = défaite
     // -------------------------------------------------------
     /**
      * Boucle de mise à jour principale appelée à chaque frame.
-     * Gère le défilement, le spawn des obstacles, les effets visuels et les collisions.
      * @param game État actuel du jeu.
      * @return Nouvel état du jeu (0: en cours, 2: victoire, 3: défaite).
      */
@@ -313,6 +332,15 @@ class Jeu {
             fen.rafraichir();
             if (victoireTimer >= VICTOIRE_DUREE)
                 return 2;
+            return 0;
+        }
+
+        // --- Défaite en attente ---
+        if (defaiteAffichee) {
+            defaiteTimer++;
+            fen.rafraichir();
+            if (defaiteTimer >= DEFAITE_DUREE)
+                return 3;
             return 0;
         }
 
@@ -383,12 +411,10 @@ class Jeu {
         // --- AMPLITUDE COURANTE ---
         float amp = (audioDevice != null) ? audioDevice.currentAmplitude : 0;
 
-        // Moyenne globale lente (pour le seuil de spawn global)
         meanAmplitude = (meanAmplitude * 0.98f) + (amp * 0.02f);
         if (meanAmplitude < 3000)
             meanAmplitude = 3000;
 
-        // Intensité normalisée [0..1] pour les effets visuels
         smoothAmplitude = smoothAmplitude * 0.85f + amp * 0.15f;
         float intensity = Math.min(1f, smoothAmplitude / (meanAmplitude * THRESHOLD_VISUAL_INTENSITY));
 
@@ -409,7 +435,6 @@ class Jeu {
                     obstacles.add(new Obstacle(sp, W + s * gap, 100, 0, 0, true, false));
                     fen.ajouter(sp);
                 }
-                // L'orbe jaune au milieu du piège
                 Cercle orbC = new Cercle(Couleur.JAUNE, new Point(W + 150, 250), 40, true);
                 Obstacle orbObs = new Obstacle(orbC, W + 150, 250, true);
                 obstacles.add(orbObs);
@@ -470,7 +495,6 @@ class Jeu {
 
         // --- OBSTACLES POP-UP SUR FORTE AMPLITUDE ---
         if (amp > meanAmplitude * THRESHOLD_POPUP && cooldown == 0) {
-            // Un pique qui surgit du sol
             int spawnX = (int) (W * 0.75);
             Texture spikePop = new Texture("./img/ennemis/spike.png", new Point(spawnX, -100), 100, 100);
             obstacles.add(new Obstacle(spikePop, spawnX, -100, 12, 100, true, false, true));
@@ -478,10 +502,10 @@ class Jeu {
             cooldown = 25;
         }
 
-        // --- EFFETS VISUELS RYTHMÉS (sans flash) ---
+        // --- EFFETS VISUELS RYTHMÉS ---
         if (audioDevice != null) {
 
-            // 1) SCREEN SHAKE sur les pics forts
+            // 1) SCREEN SHAKE
             if (amp > meanAmplitude * THRESHOLD_SHAKE && shakeTimer <= 0) {
                 shakeTimer = 4;
             }
@@ -516,7 +540,7 @@ class Jeu {
                 shakeOffsetY = 0;
             }
 
-            // 2) BANDES NÉON PULSANTES (violet/bleu → rouge/orange)
+            // 2) BANDES NÉON PULSANTES
             int oR = (int) (80 + intensity * 175);
             int oG = (int) (20 + (1f - intensity) * 30);
             int oB = (int) (180 * (1f - intensity));
@@ -603,7 +627,13 @@ class Jeu {
                         obs.orbUsed = true;
                     }
                 } else if (obs.isSpike) {
-                    return 3;
+                    // --- DÉFAITE ---
+                    if (!defaiteAffichee) {
+                        defaiteAffichee = true;
+                        defaiteTimer = 0;
+                        afficherDefaite();
+                    }
+                    return 0;
                 } else {
                     int obsTop = obs.y + obs.dessin.getBoiteEnglobante().getHauteur();
                     if (joueur.getVelocity() < 0 && (pY + 25) >= obsTop) {
@@ -611,7 +641,13 @@ class Jeu {
                         joueur.setVelocity(0);
                         joueur.setJumping(false);
                     } else if (pY < obsTop - 30) {
-                        return 3;
+                        // --- DÉFAITE ---
+                        if (!defaiteAffichee) {
+                            defaiteAffichee = true;
+                            defaiteTimer = 0;
+                            afficherDefaite();
+                        }
+                        return 0;
                     }
                 }
             }
@@ -628,7 +664,6 @@ class Jeu {
     // -------------------------------------------------------
     /**
      * Supprime tous les éléments graphiques et ferme les ressources audio.
-     * Appelée lors d'un retour au menu ou de la fermeture du jeu.
      */
     public void effacerJeu() {
         fen.supprimer(fond1);
@@ -657,12 +692,19 @@ class Jeu {
             plafond2.translater(-shakeOffsetX, -shakeOffsetY);
             plafond3.translater(-shakeOffsetX, -shakeOffsetY);
         }
+
         if (victoireAffichee) {
             fen.supprimer(fondVictoire);
             fen.supprimer(fondVictoireOverlay);
             fen.supprimer(texteVictoire);
             fen.supprimer(texteSousVictoire);
         }
+
+        if (defaiteAffichee) {
+            fen.supprimer(texteDefaite);
+            fen.supprimer(texteSousDefaite);
+        }
+
         fen.removeKeyListener(clavier);
         fen.getP().removeKeyListener(clavier);
         for (Obstacle obs : obstacles) {
