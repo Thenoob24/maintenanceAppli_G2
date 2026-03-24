@@ -41,29 +41,56 @@ class Player {
     }
 
     public void bougerJoueur(ClavierBorneArcade cla, Fenetre fen) {
+        bougerJoueur(cla, fen, false);
+    }
+
+    public void bougerJoueur(ClavierBorneArcade cla, Fenetre fen, boolean gravityInverted) {
         if (cla.getJoyJ1HautEnfoncee() && !isJumping) {
-            velocity = 20.0;
+            velocity = gravityInverted ? -20.0 : 20.0;
             isJumping = true;
-            // On laisse l'angle filer pour qu'il tourne progressivement
         }
     }
 
+    public void jumpOrb(boolean gravityInverted) {
+        velocity = gravityInverted ? -25.0 : 25.0; // Boost un peu plus fort que le saut normal
+        isJumping = true;
+    }
+
     public void updatePhysics(int groundY) {
-        velocity -= gravity;
+        updatePhysics(groundY, -1, false);
+    }
+
+    public void updatePhysics(int groundY, int ceilingY, boolean gravityInverted) {
+        if (gravityInverted) {
+            velocity += gravity; // gravité inversée : accélère vers le haut
+        } else {
+            velocity -= gravity;
+        }
         int dy = (int) velocity;
         
         tex.translater(0, dy);
         
         if (isJumping) {
-            // Tourne progressivement en vol (environ 4.5 degres par frame pour 180 degres total)
-            tex.setAngle(tex.getAngle() + 4.5);
+            double rotDir = gravityInverted ? -4.5 : 4.5;
+            tex.setAngle(tex.getAngle() + rotDir);
         }
 
-        if (tex.getA().getY() <= groundY) {
-            int correctif = groundY - tex.getA().getY();
-            tex.translater(0, correctif);
-            velocity = 0;
-            setJumping(false);
+        if (!gravityInverted) {
+            // Gravité normale : sol en bas
+            if (tex.getA().getY() <= groundY) {
+                int correctif = groundY - tex.getA().getY();
+                tex.translater(0, correctif);
+                velocity = 0;
+                setJumping(false);
+            }
+        } else {
+            // Gravité inversée : plafond en haut
+            if (tex.getA().getY() >= ceilingY) {
+                int correctif = ceilingY - tex.getA().getY();
+                tex.translater(0, correctif);
+                velocity = 0;
+                setJumping(false);
+            }
         }
     }
 

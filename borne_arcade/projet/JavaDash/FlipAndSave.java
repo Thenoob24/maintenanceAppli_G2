@@ -9,7 +9,8 @@ public class FlipAndSave {
         String[] files = {
             "./img/Tiles/Tile_02.png",
             "./img/ennemis/spike.png",
-            "./img/Tiles/Tile_05.png"
+            "./img/Tiles/Tile_05.png",
+            "./img/Tiles/Tile_11.png"
         };
         for (String file : files) {
             try {

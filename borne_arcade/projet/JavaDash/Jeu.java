@@ -32,8 +32,9 @@ class Jeu {
     private Texte texteVictoire;
     private Texte texteSousVictoire;
     private boolean victoireAffichee = false;
-    private int victoireTimer = 0; // délai avant de retourner le code 2
-    private static final int VICTOIRE_DUREE = 180; // ~3 secondes à 60fps
+    private int victoireTimer = 0;
+    private static final int VICTOIRE_DUREE = 180;
+    private Texte texteAmplitude;
 
     class MyAudioDevice extends JavaSoundAudioDevice {
         public volatile float currentAmplitude = 0;
@@ -56,10 +57,15 @@ class Jeu {
     private int lastPlatformY = 100;
     private int consecutivePlatforms = 0;
     private int consecutiveSpikes = 0;
-    private float meanAmplitude = 5000;
+    private float meanAmplitude = 2000;
 
-    private Rectangle flashScreen;
-    private int flashTime = 0;
+    // --- DÉTECTION DE BEAT ---
+    // On garde un historique court d'amplitudes pour détecter les vraies montées
+    private float[] ampHistory = new float[8];
+    private int ampHistIdx = 0;
+    private float localMean = 2000; // moyenne locale (fenêtre courte) pour le beat
+    private boolean wasOnBeat = false; // évite les doubles déclenchements
+    private static final float BEAT_THRESHOLD = 1.6f; // ratio local pour considérer un beat
 
     // --- EFFETS RYTHMÉS ---
     private int shakeTimer = 0;
@@ -70,6 +76,30 @@ class Jeu {
     private static final int GLOW_H = 6;
     private float smoothAmplitude = 0;
     private float currentBarH = BAR_H;
+
+    // --- PLATEFORMES SCALÉES PAR AMPLITUDE ---
+    // Chaque plateforme stocke sa taille "cible" et pulse visuellement
+    private static final int PLAT_W_MIN = 80;
+    private static final int PLAT_W_MAX = 200;
+    private static final int PLAT_H_BASE = 30;
+    private static final int PLAT_H_MAX = 60;
+
+    // --- INVERSION DE GRAVITÉ ---
+    private boolean gravityInverted = false;
+    private int gravityCooldown = 0;
+    private static final int GRAVITY_COOLDOWN_DUREE = 180;
+    private String currentBgPath = "./img/background/Day/Background.png";
+    private String currentSolPath = "./img/Tiles/Tile_02.png";
+    private String currentSolFlipPath = "./img/Tiles/Tile_02_flip.png";
+
+    // --- SEUILS D'AMPLITUDE (Multiplicateurs de meanAmplitude) ---
+    private static final float THRESHOLD_POPUP = 1.5f;
+    private static final float THRESHOLD_SHAKE = 2.0f;
+    private static final float THRESHOLD_GRAVITY = 5.0f;
+    private static final float THRESHOLD_DOUBLE_SPIKE = 2.0f;
+    private static final float THRESHOLD_MOVING_SPIKE = 1.5f;
+    private static final float THRESHOLD_MOVING_PLATFORM = 1.5f;
+    private static final float THRESHOLD_VISUAL_INTENSITY = 1.5f;
 
     // -------------------------------------------------------
     // Calcule la durée totale du MP3 en samples PCM
@@ -117,6 +147,31 @@ class Jeu {
     }
 
     // -------------------------------------------------------
+    // Détecte si l'amplitude courante représente un "beat"
+    // en comparant à la moyenne locale (fenêtre glissante courte)
+    // -------------------------------------------------------
+    private boolean detectBeat(float amp) {
+        // Met à jour l'historique circulaire
+        ampHistory[ampHistIdx % ampHistory.length] = amp;
+        ampHistIdx++;
+
+        // Calcule la moyenne locale sur la fenêtre
+        float sum = 0;
+        for (float v : ampHistory)
+            sum += v;
+        localMean = sum / ampHistory.length;
+        if (localMean < 3000)
+            localMean = 3000;
+
+        boolean onBeat = (amp > localMean * BEAT_THRESHOLD);
+
+        // Front montant seulement (pas de maintien)
+        boolean isBeatEdge = onBeat && !wasOnBeat;
+        wasOnBeat = onBeat;
+        return isBeatEdge;
+    }
+
+    // -------------------------------------------------------
     // CRÉATION DU JEU
     // -------------------------------------------------------
     public void CreationJeu(Fenetre f) {
@@ -136,23 +191,13 @@ class Jeu {
         plafond2 = new Texture("./img/Tiles/Tile_02_flip.png", new Point(W, H - 100), W, 100);
         plafond3 = new Texture("./img/Tiles/Tile_02_flip.png", new Point(W * 2, H - 100), W, 100);
 
-        flashScreen = new Rectangle(MG2D.geometrie.Couleur.BLANC, new Point(0, 0), W, H, true);
-
         // Bandes néon pulsantes (sol et plafond)
-        glowBot = new Rectangle(
-                new MG2D.geometrie.Couleur(0, 0, 0),
-                new Point(0, 100), W, GLOW_H, true);
-        glowTop = new Rectangle(
-                new MG2D.geometrie.Couleur(0, 0, 0),
-                new Point(0, H - 100 - GLOW_H), W, GLOW_H, true);
+        glowBot = new Rectangle(new MG2D.geometrie.Couleur(0, 0, 0), new Point(0, 100), W, GLOW_H, true);
+        glowTop = new Rectangle(new MG2D.geometrie.Couleur(0, 0, 0), new Point(0, H - 100 - GLOW_H), W, GLOW_H, true);
 
         // Barre de progression (fond + barre colorée)
-        barrefond = new Rectangle(
-                new MG2D.geometrie.Couleur(40, 40, 40),
-                new Point(0, H - BAR_H), W, BAR_H, true);
-        barreProgression = new Rectangle(
-                couleurDegrade(0f),
-                new Point(0, H - BAR_H), 1, BAR_H, true);
+        barrefond = new Rectangle(new MG2D.geometrie.Couleur(40, 40, 40), new Point(0, H - BAR_H), W, BAR_H, true);
+        barreProgression = new Rectangle(couleurDegrade(0f), new Point(0, H - BAR_H), 1, BAR_H, true);
 
         fen.ajouter(fond1);
         fen.ajouter(fond2);
@@ -167,6 +212,11 @@ class Jeu {
         fen.ajouter(plafond3);
         fen.ajouter(barrefond);
         fen.ajouter(barreProgression);
+
+        java.awt.Font fontAmp = new java.awt.Font("Arial", java.awt.Font.BOLD, 18);
+        texteAmplitude = new Texte(new MG2D.geometrie.Couleur(255, 255, 255), "Amplitude : 0", fontAmp,
+                new Point(W - 200, H - 50));
+        fen.ajouter(texteAmplitude);
 
         clavier = new ClavierBorneArcade();
         fen.addKeyListener(clavier);
@@ -197,26 +247,17 @@ class Jeu {
     }
 
     private void afficherVictoire() {
-        fondVictoire = new Rectangle(
-                new MG2D.geometrie.Couleur(200, 160, 0),
-                new Point(0, 0), W, H, true);
-        fondVictoireOverlay = new Rectangle(
-                new MG2D.geometrie.Couleur(0, 0, 0),
-                new Point(W / 2 - 320, H / 2 - 100), 640, 200, true);
+        fondVictoire = new Rectangle(new MG2D.geometrie.Couleur(200, 160, 0), new Point(0, 0), W, H, true);
+        fondVictoireOverlay = new Rectangle(new MG2D.geometrie.Couleur(0, 0, 0), new Point(W / 2 - 320, H / 2 - 100),
+                640, 200, true);
 
         java.awt.Font fontTitre = new java.awt.Font("Arial", java.awt.Font.BOLD, 72);
         java.awt.Font fontSous = new java.awt.Font("Arial", java.awt.Font.PLAIN, 22);
 
-        texteVictoire = new Texte(
-                new MG2D.geometrie.Couleur(255, 220, 0),
-                "YOU WIN !",
-                fontTitre,
+        texteVictoire = new Texte(new MG2D.geometrie.Couleur(255, 220, 0), "YOU WIN !", fontTitre,
                 new Point(W / 2 - 160, H / 2 + 20));
-        texteSousVictoire = new Texte(
-                new MG2D.geometrie.Couleur(255, 255, 255),
-                "Félicitations, tu as survécu jusqu'au bout !",
-                fontSous,
-                new Point(W / 2 - 290, H / 2 - 55));
+        texteSousVictoire = new Texte(new MG2D.geometrie.Couleur(255, 255, 255),
+                "Félicitations, tu as survécu jusqu'au bout !", fontSous, new Point(W / 2 - 290, H / 2 - 55));
 
         fen.ajouter(fondVictoire);
         fen.ajouter(fondVictoireOverlay);
@@ -235,7 +276,7 @@ class Jeu {
         } catch (InterruptedException e) {
         }
 
-        // --- Si l'écran de victoire est affiché, on attend puis on renvoie 2 ---
+        // --- Victoire en attente ---
         if (victoireAffichee) {
             victoireTimer++;
             fen.rafraichir();
@@ -244,7 +285,7 @@ class Jeu {
             return 0;
         }
 
-        // Défilement décors
+        // --- Défilement décors ---
         fond1.translater(-5, 0);
         fond2.translater(-5, 0);
         fond3.translater(-5, 0);
@@ -282,102 +323,133 @@ class Jeu {
             int drawBarH = Math.max(BAR_H, (int) currentBarH);
 
             fen.supprimer(barrefond);
-            barrefond = new Rectangle(
-                    new MG2D.geometrie.Couleur(40, 40, 40),
-                    new Point(0, H - drawBarH), W, drawBarH, true);
+            barrefond = new Rectangle(new MG2D.geometrie.Couleur(40, 40, 40), new Point(0, H - drawBarH), W, drawBarH,
+                    true);
             fen.ajouter(barrefond);
 
             fen.supprimer(barreProgression);
-            barreProgression = new Rectangle(
-                    couleurDegrade(ratio),
-                    new Point(0, H - drawBarH), barWidth, drawBarH, true);
+            barreProgression = new Rectangle(couleurDegrade(ratio), new Point(0, H - drawBarH), barWidth, drawBarH,
+                    true);
             fen.ajouter(barreProgression);
 
-            // FIN DE MUSIQUE → déclenche la victoire
             if (ratio >= 1.0f && !victoireAffichee) {
                 victoireAffichee = true;
                 victoireTimer = 0;
                 afficherVictoire();
-                return 0; // on laisse le timer s'écouler
+                return 0;
             }
         }
 
-        // --- SPAWN D'OBSTACLES RYTHMÉ SUR L'AMPLITUDE AUDIO ---
-        if (cooldown > 0)
-            cooldown--;
+        // --- MAJ AFFICHAGE AMPLITUDE ---
+        if (audioDevice != null) {
+            fen.supprimer(texteAmplitude);
+            java.awt.Font fontAmp = new java.awt.Font("Arial", java.awt.Font.BOLD, 18);
+            texteAmplitude = new Texte(new MG2D.geometrie.Couleur(255, 255, 255),
+                    "Amplitude : " + (int) audioDevice.currentAmplitude, fontAmp, new Point(W - 200, H - 50));
+            fen.ajouter(texteAmplitude);
+        }
+
+        // --- AMPLITUDE COURANTE ---
         float amp = (audioDevice != null) ? audioDevice.currentAmplitude : 0;
 
+        // Moyenne globale lente (pour le seuil de spawn global)
         meanAmplitude = (meanAmplitude * 0.98f) + (amp * 0.02f);
         if (meanAmplitude < 3000)
             meanAmplitude = 3000;
 
-        if (amp > meanAmplitude * 1.3f && cooldown == 0) {
-            boolean forcePlatform = (consecutiveSpikes >= 2);
+        // Intensité normalisée [0..1] pour les effets visuels
+        smoothAmplitude = smoothAmplitude * 0.85f + amp * 0.15f;
+        float intensity = Math.min(1f, smoothAmplitude / (meanAmplitude * THRESHOLD_VISUAL_INTENSITY));
 
-            if (Math.random() > 0.4 && !forcePlatform) {
-                // SPIKES
+        // --- SPAWN D'OBSTACLES SUR BEAT DÉTECTÉ ---
+        if (cooldown > 0)
+            cooldown--;
+
+        boolean beat = detectBeat(amp);
+
+        if (beat && cooldown == 0) {
+            double rand = Math.random();
+
+            if (rand < 0.2) {
+                // --- SPAWN PIÈGE 4 SPIKES + ORBE ---
+                int gap = 100;
+                for (int s = 0; s < 4; s++) {
+                    Texture sp = new Texture("./img/ennemis/spike.png", new Point(W + s * gap, 100), 100, 100);
+                    obstacles.add(new Obstacle(sp, W + s * gap, 100, 0, 0, true, false));
+                    fen.ajouter(sp);
+                }
+                // L'orbe jaune au milieu du piège
+                Texture orbT = new Texture("./img/others/yellow_orb.png", new Point(W + 150, 250), 80, 80);
+                obstacles.add(new Obstacle(orbT, W + 150, 250, true));
+                fen.ajouter(orbT);
+                cooldown = 60;
+            } else if (rand > 0.6 && consecutiveSpikes < 2) {
+                // --- SPIKES ---
                 consecutivePlatforms = 0;
                 consecutiveSpikes++;
-                int samples = (amp > meanAmplitude * 2.0f) ? 2 : 1;
+                int samples = (amp > meanAmplitude * THRESHOLD_DOUBLE_SPIKE) ? 2 : 1;
                 for (int s = 0; s < samples; s++) {
                     int startY = 100, vitY = 0, ampY = 0;
-                    if (amp > meanAmplitude * 2.5f && Math.random() > 0.6) {
+                    if (amp > meanAmplitude * THRESHOLD_MOVING_SPIKE && Math.random() > 0.6) {
                         startY = 150 + (int) (Math.random() * 150);
                         vitY = 4;
                         ampY = 80;
                     }
-                    Texture spike = new Texture("./img/ennemis/spike.png",
-                            new Point(W + s * 120, startY), 100, 100);
-                    obstacles.add(new Obstacle(spike, W + s * 120, startY, vitY, ampY, true, false));
+                    Texture spike = new Texture("./img/ennemis/spike.png", new Point(W + s * 130, startY), 100, 100);
+                    obstacles.add(new Obstacle(spike, W + s * 130, startY, vitY, ampY, true, false));
                     fen.ajouter(spike);
 
                     int mirrorY = H - startY - 100;
-                    Texture spikeMir = new Texture("./img/ennemis/spike_flip.png",
-                            new Point(W + s * 120, mirrorY), 100, 100);
-                    obstacles.add(new Obstacle(spikeMir, W + s * 120, mirrorY, -vitY, ampY, true, true));
+                    Texture spikeMir = new Texture("./img/ennemis/spike_flip.png", new Point(W + s * 130, mirrorY), 100,
+                            100);
+                    obstacles.add(new Obstacle(spikeMir, W + s * 130, mirrorY, -vitY, ampY, true, true));
                     fen.ajouter(spikeMir);
                 }
-                cooldown = 40;
+                cooldown = 35;
             } else {
-                // PLATEFORMES
+                // --- PLATEFORMES ---
+                int platW = 100, platH = 100;
                 consecutivePlatforms++;
                 consecutiveSpikes = 0;
-                if (consecutivePlatforms == 1)
+                if (consecutivePlatforms == 1) {
                     lastPlatformY = 100;
-                else {
-                    lastPlatformY += 100;
+                } else {
+                    lastPlatformY += 80 + (int) (intensity * 60);
                     if (lastPlatformY > 300)
                         lastPlatformY = 100;
                 }
                 int vitY = 0, ampY = 0;
-                if (amp > meanAmplitude * 2.5f) {
+                if (amp > meanAmplitude * THRESHOLD_MOVING_PLATFORM) {
                     vitY = 2;
                     ampY = 100;
                     lastPlatformY = 200;
                 }
-
-                Texture plat = new Texture("./img/Tiles/Tile_05.png",
-                        new Point(W, lastPlatformY), 110, 100);
+                Texture plat = new Texture("./img/Tiles/Tile_11.png", new Point(W, lastPlatformY), platW, platH);
                 obstacles.add(new Obstacle(plat, W, lastPlatformY, vitY, ampY, false, false));
                 fen.ajouter(plat);
-
-                int mirrorY = H - lastPlatformY - 100;
-                Texture platMir = new Texture("./img/Tiles/Tile_05_flip.png",
-                        new Point(W, mirrorY), 110, 100);
+                int mirrorY = H - lastPlatformY - platH;
+                Texture platMir = new Texture("./img/Tiles/Tile_11_flip.png", new Point(W, mirrorY), platW, platH);
                 obstacles.add(new Obstacle(platMir, W, mirrorY, -vitY, ampY, false, true));
                 fen.ajouter(platMir);
-                cooldown = 25;
+                cooldown = 22;
             }
         }
 
-        // --- EFFETS RYTHMÉS (sans flash) ---
+        // --- OBSTACLES POP-UP SUR FORTE AMPLITUDE ---
+        if (amp > meanAmplitude * THRESHOLD_POPUP && cooldown == 0) {
+            // Un pique qui surgit du sol
+            int spawnX = (int) (W * 0.75);
+            Texture spikePop = new Texture("./img/ennemis/spike.png", new Point(spawnX, -100), 100, 100);
+            obstacles.add(new Obstacle(spikePop, spawnX, -100, 12, 100, true, false, true));
+            fen.ajouter(spikePop);
+            cooldown = 25;
+        }
+
+        // --- EFFETS VISUELS RYTHMÉS (sans flash) ---
         if (audioDevice != null) {
-            // Lissage de l'amplitude pour des transitions fluides
-            smoothAmplitude = smoothAmplitude * 0.85f + amp * 0.15f;
-            float intensity = Math.min(1f, smoothAmplitude / (meanAmplitude * 2.5f));
 
             // 1) SCREEN SHAKE sur les pics forts
-            if (amp > meanAmplitude * 2.0f && shakeTimer <= 0) {
+            if (amp > meanAmplitude * THRESHOLD_SHAKE && shakeTimer <= 0) {
                 shakeTimer = 4;
             }
             if (shakeTimer > 0) {
@@ -386,39 +458,97 @@ class Jeu {
                 int newShakeY = (int) (Math.random() * 6 - 3);
                 int dx = newShakeX - shakeOffsetX;
                 int dy = newShakeY - shakeOffsetY;
-                fond1.translater(dx, dy); fond2.translater(dx, dy); fond3.translater(dx, dy);
-                sol1.translater(dx, dy); sol2.translater(dx, dy); sol3.translater(dx, dy);
-                plafond1.translater(dx, dy); plafond2.translater(dx, dy); plafond3.translater(dx, dy);
+                fond1.translater(dx, dy);
+                fond2.translater(dx, dy);
+                fond3.translater(dx, dy);
+                sol1.translater(dx, dy);
+                sol2.translater(dx, dy);
+                sol3.translater(dx, dy);
+                plafond1.translater(dx, dy);
+                plafond2.translater(dx, dy);
+                plafond3.translater(dx, dy);
                 shakeOffsetX = newShakeX;
                 shakeOffsetY = newShakeY;
             } else if (shakeOffsetX != 0 || shakeOffsetY != 0) {
-                // Remettre en place après le shake
-                fond1.translater(-shakeOffsetX, -shakeOffsetY); fond2.translater(-shakeOffsetX, -shakeOffsetY); fond3.translater(-shakeOffsetX, -shakeOffsetY);
-                sol1.translater(-shakeOffsetX, -shakeOffsetY); sol2.translater(-shakeOffsetX, -shakeOffsetY); sol3.translater(-shakeOffsetX, -shakeOffsetY);
-                plafond1.translater(-shakeOffsetX, -shakeOffsetY); plafond2.translater(-shakeOffsetX, -shakeOffsetY); plafond3.translater(-shakeOffsetX, -shakeOffsetY);
+                fond1.translater(-shakeOffsetX, -shakeOffsetY);
+                fond2.translater(-shakeOffsetX, -shakeOffsetY);
+                fond3.translater(-shakeOffsetX, -shakeOffsetY);
+                sol1.translater(-shakeOffsetX, -shakeOffsetY);
+                sol2.translater(-shakeOffsetX, -shakeOffsetY);
+                sol3.translater(-shakeOffsetX, -shakeOffsetY);
+                plafond1.translater(-shakeOffsetX, -shakeOffsetY);
+                plafond2.translater(-shakeOffsetX, -shakeOffsetY);
+                plafond3.translater(-shakeOffsetX, -shakeOffsetY);
                 shakeOffsetX = 0;
                 shakeOffsetY = 0;
             }
 
             // 2) BANDES NÉON PULSANTES (violet/bleu → rouge/orange)
-            int oR = (int) (80 + intensity * 175);  // 80 → 255
-            int oG = (int) (20 + (1f - intensity) * 30); // subtil
-            int oB = (int) (180 * (1f - intensity));  // 180 → 0
+            int oR = (int) (80 + intensity * 175);
+            int oG = (int) (20 + (1f - intensity) * 30);
+            int oB = (int) (180 * (1f - intensity));
             oR = Math.max(0, Math.min(255, oR));
             oG = Math.max(0, Math.min(255, oG));
             oB = Math.max(0, Math.min(255, oB));
             MG2D.geometrie.Couleur glowColor = new MG2D.geometrie.Couleur(oR, oG, oB);
             fen.supprimer(glowBot);
             fen.supprimer(glowTop);
-            int glowH = GLOW_H + (int) (intensity * 10); // pulse de 6 à 16px
+            int glowH = GLOW_H + (int) (intensity * 10);
             glowBot = new Rectangle(glowColor, new Point(0, 100), W, glowH, true);
             glowTop = new Rectangle(glowColor, new Point(0, H - 100 - glowH), W, glowH, true);
             fen.ajouter(glowBot);
             fen.ajouter(glowTop);
 
             // 3) BARRE DE PROGRESSION QUI PULSE EN HAUTEUR
-            float targetBarH = BAR_H + intensity * 14; // max ~22px
+            float targetBarH = BAR_H + intensity * 14;
             currentBarH = currentBarH * 0.8f + targetBarH * 0.2f;
+
+            // 4) INVERSION DE GRAVITÉ sur beat très fort
+            if (gravityCooldown > 0)
+                gravityCooldown--;
+            if (amp > meanAmplitude * THRESHOLD_GRAVITY && gravityCooldown == 0) {
+                gravityInverted = !gravityInverted;
+                gravityCooldown = GRAVITY_COOLDOWN_DUREE;
+
+                String newBg = gravityInverted ? "./img/background/Night/1.png" : "./img/background/Day/Background.png";
+                currentBgPath = newBg;
+                fen.supprimer(fond1);
+                fen.supprimer(fond2);
+                fen.supprimer(fond3);
+                int f1x = fond1.getA().getX(), f2x = fond2.getA().getX(), f3x = fond3.getA().getX();
+                fond1 = new Texture(newBg, new Point(f1x, 0), W, H);
+                fond2 = new Texture(newBg, new Point(f2x, 0), W, H);
+                fond3 = new Texture(newBg, new Point(f3x, 0), W, H);
+                fen.ajouter(fond1);
+                fen.ajouter(fond2);
+                fen.ajouter(fond3);
+
+                String newSol = gravityInverted ? "./img/Tiles/Tile_14.png" : "./img/Tiles/Tile_02.png";
+                String newSolFlip = gravityInverted ? "./img/Tiles/Tile_14.png" : "./img/Tiles/Tile_02_flip.png";
+                currentSolPath = newSol;
+                currentSolFlipPath = newSolFlip;
+                fen.supprimer(sol1);
+                fen.supprimer(sol2);
+                fen.supprimer(sol3);
+                int s1x = sol1.getA().getX(), s2x = sol2.getA().getX(), s3x = sol3.getA().getX();
+                sol1 = new Texture(newSol, new Point(s1x, 0), W, 100);
+                sol2 = new Texture(newSol, new Point(s2x, 0), W, 100);
+                sol3 = new Texture(newSol, new Point(s3x, 0), W, 100);
+                fen.ajouter(sol1);
+                fen.ajouter(sol2);
+                fen.ajouter(sol3);
+
+                fen.supprimer(plafond1);
+                fen.supprimer(plafond2);
+                fen.supprimer(plafond3);
+                int p1x = plafond1.getA().getX(), p2x = plafond2.getA().getX(), p3x = plafond3.getA().getX();
+                plafond1 = new Texture(newSolFlip, new Point(p1x, H - 100), W, 100);
+                plafond2 = new Texture(newSolFlip, new Point(p2x, H - 100), W, 100);
+                plafond3 = new Texture(newSolFlip, new Point(p3x, H - 100), W, 100);
+                fen.ajouter(plafond1);
+                fen.ajouter(plafond2);
+                fen.ajouter(plafond3);
+            }
         }
 
         // --- COLLISIONS ---
@@ -433,23 +563,28 @@ class Jeu {
                 fen.supprimer(obs.dessin);
                 obstacles.remove(i);
             } else if (obs.collidesWithPlayer(pX, pY, pW, pH)) {
-                if (obs.isSpike) {
-                    return 3; // Mort
+                if (obs.isOrb) {
+                    if (!obs.orbUsed && clavier.getJoyJ1HautEnfoncee()) {
+                        joueur.jumpOrb(gravityInverted);
+                        obs.orbUsed = true;
+                    }
+                } else if (obs.isSpike) {
+                    return 3;
                 } else {
-                    int obsTop = obs.y + 100;
+                    int obsTop = obs.y + obs.dessin.getHauteur();
                     if (joueur.getVelocity() < 0 && (pY + 25) >= obsTop) {
                         joueur.getTex().translater(0, obsTop - pY);
                         joueur.setVelocity(0);
                         joueur.setJumping(false);
                     } else if (pY < obsTop - 30) {
-                        return 3; // Mort
+                        return 3;
                     }
                 }
             }
         }
 
-        joueur.bougerJoueur(clavier, fen);
-        joueur.updatePhysics(100);
+        joueur.bougerJoueur(clavier, fen, gravityInverted);
+        joueur.updatePhysics(100, H - 200, gravityInverted);
         fen.rafraichir();
         return 0;
     }
@@ -470,15 +605,19 @@ class Jeu {
         fen.supprimer(joueur.getTex());
         fen.supprimer(barrefond);
         fen.supprimer(barreProgression);
-        if (flashTime > 0)
-            fen.supprimer(flashScreen);
         fen.supprimer(glowBot);
         fen.supprimer(glowTop);
-        // Reset shake si actif
+
         if (shakeOffsetX != 0 || shakeOffsetY != 0) {
-            fond1.translater(-shakeOffsetX, -shakeOffsetY); fond2.translater(-shakeOffsetX, -shakeOffsetY); fond3.translater(-shakeOffsetX, -shakeOffsetY);
-            sol1.translater(-shakeOffsetX, -shakeOffsetY); sol2.translater(-shakeOffsetX, -shakeOffsetY); sol3.translater(-shakeOffsetX, -shakeOffsetY);
-            plafond1.translater(-shakeOffsetX, -shakeOffsetY); plafond2.translater(-shakeOffsetX, -shakeOffsetY); plafond3.translater(-shakeOffsetX, -shakeOffsetY);
+            fond1.translater(-shakeOffsetX, -shakeOffsetY);
+            fond2.translater(-shakeOffsetX, -shakeOffsetY);
+            fond3.translater(-shakeOffsetX, -shakeOffsetY);
+            sol1.translater(-shakeOffsetX, -shakeOffsetY);
+            sol2.translater(-shakeOffsetX, -shakeOffsetY);
+            sol3.translater(-shakeOffsetX, -shakeOffsetY);
+            plafond1.translater(-shakeOffsetX, -shakeOffsetY);
+            plafond2.translater(-shakeOffsetX, -shakeOffsetY);
+            plafond3.translater(-shakeOffsetX, -shakeOffsetY);
         }
         if (victoireAffichee) {
             fen.supprimer(fondVictoire);
