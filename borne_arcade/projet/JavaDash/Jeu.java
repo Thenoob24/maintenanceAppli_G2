@@ -97,8 +97,8 @@ class Jeu {
     private static final float THRESHOLD_SHAKE = 2.0f;
     private static final float THRESHOLD_GRAVITY = 5.0f;
     private static final float THRESHOLD_DOUBLE_SPIKE = 2.0f;
-    private static final float THRESHOLD_MOVING_SPIKE = 1.5f;
-    private static final float THRESHOLD_MOVING_PLATFORM = 1.5f;
+    private static final float THRESHOLD_MOVING_SPIKE = 10f;
+    private static final float THRESHOLD_MOVING_PLATFORM = 10f;
     private static final float THRESHOLD_VISUAL_INTENSITY = 1.5f;
 
     // -------------------------------------------------------
@@ -379,9 +379,11 @@ class Jeu {
                     fen.ajouter(sp);
                 }
                 // L'orbe jaune au milieu du piège
-                Texture orbT = new Texture("./img/others/yellow_orb.png", new Point(W + 150, 250), 80, 80);
-                obstacles.add(new Obstacle(orbT, W + 150, 250, true));
-                fen.ajouter(orbT);
+                Cercle orbC = new Cercle(Couleur.JAUNE, new Point(W + 150, 250), 40, true);
+                Obstacle orbObs = new Obstacle(orbC, W + 150, 250, true);
+                obstacles.add(orbObs);
+                fen.ajouter(orbC);
+                if (orbObs.onde != null) fen.ajouter(orbObs.onde);
                 cooldown = 60;
             } else if (rand > 0.6 && consecutiveSpikes < 2) {
                 // --- SPIKES ---
@@ -392,7 +394,7 @@ class Jeu {
                     int startY = 100, vitY = 0, ampY = 0;
                     if (amp > meanAmplitude * THRESHOLD_MOVING_SPIKE && Math.random() > 0.6) {
                         startY = 150 + (int) (Math.random() * 150);
-                        vitY = 4;
+                        vitY = 1;
                         ampY = 80;
                     }
                     Texture spike = new Texture("./img/ennemis/spike.png", new Point(W + s * 130, startY), 100, 100);
@@ -558,9 +560,10 @@ class Jeu {
 
         for (int i = obstacles.size() - 1; i >= 0; i--) {
             Obstacle obs = obstacles.get(i);
-            obs.update();
+            obs.update(intensity);
             if (obs.x < -200) {
                 fen.supprimer(obs.dessin);
+                if (obs.onde != null) fen.supprimer(obs.onde);
                 obstacles.remove(i);
             } else if (obs.collidesWithPlayer(pX, pY, pW, pH)) {
                 if (obs.isOrb) {
@@ -571,7 +574,7 @@ class Jeu {
                 } else if (obs.isSpike) {
                     return 3;
                 } else {
-                    int obsTop = obs.y + obs.dessin.getHauteur();
+                    int obsTop = obs.y + obs.dessin.getBoiteEnglobante().getHauteur();
                     if (joueur.getVelocity() < 0 && (pY + 25) >= obsTop) {
                         joueur.getTex().translater(0, obsTop - pY);
                         joueur.setVelocity(0);
@@ -627,8 +630,10 @@ class Jeu {
         }
         fen.removeKeyListener(clavier);
         fen.getP().removeKeyListener(clavier);
-        for (Obstacle obs : obstacles)
+        for (Obstacle obs : obstacles) {
             fen.supprimer(obs.dessin);
+            if (obs.onde != null) fen.supprimer(obs.onde);
+        }
         obstacles.clear();
         if (player != null)
             player.close();
