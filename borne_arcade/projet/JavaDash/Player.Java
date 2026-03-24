@@ -8,6 +8,10 @@ class Player {
     private double gravity;
     private boolean isJumping;
 
+    /**
+     * Constructeur par défaut. Initialise le joueur avec sa texture rotative
+     * et ses paramètres physiques de base.
+     */
     public Player() {
         this.tex = new RotatingTexture("./img/player/layer1.png", new Point(200, 100), 100, 100);
         this.velocity = 0;
@@ -15,6 +19,10 @@ class Player {
         this.isJumping = false;
     }
 
+    /**
+     * Constructeur par copie.
+     * @param a Le joueur à copier.
+     */
     public Player(Player a) {
         this.tex = new RotatingTexture((RotatingTexture)a.getTex());
         this.velocity = a.getVelocity();
@@ -23,6 +31,10 @@ class Player {
     }
     
     // Hitbox principale (et texture visible)
+    /**
+     * Retourne la texture du joueur utilisée pour l'affichage et les collisions.
+     * @return La RotatingTexture du joueur.
+     */
     public Texture getTex() { return tex; }
     
     public double getVelocity() { return velocity; }
@@ -40,10 +52,21 @@ class Player {
         }
     }
 
+    /**
+     * Gère l'entrée clavier pour déclencher un saut simple.
+     * @param cla Le gestionnaire du clavier.
+     * @param fen La fenêtre du jeu.
+     */
     public void bougerJoueur(ClavierBorneArcade cla, Fenetre fen) {
         bougerJoueur(cla, fen, false);
     }
 
+    /**
+     * Gère l'entrée clavier pour déclencher un saut, en tenant compte de l'inversion de gravité.
+     * @param cla Le gestionnaire du clavier.
+     * @param fen La fenêtre du jeu.
+     * @param gravityInverted Vrai si la gravité est actuellement inversée.
+     */
     public void bougerJoueur(ClavierBorneArcade cla, Fenetre fen, boolean gravityInverted) {
         if (cla.getJoyJ1HautEnfoncee() && !isJumping) {
             velocity = gravityInverted ? -20.0 : 20.0;
@@ -51,15 +74,29 @@ class Player {
         }
     }
 
+    /**
+     * Déclenche un saut spécial (plus puissant) suite à l'activation d'une orbe.
+     * @param gravityInverted Vrai si la gravité est inversée.
+     */
     public void jumpOrb(boolean gravityInverted) {
         velocity = gravityInverted ? -25.0 : 25.0; // Boost un peu plus fort que le saut normal
         isJumping = true;
     }
 
+    /**
+     * Met à jour la physique du joueur (gravité et collision sol).
+     * @param groundY Position Y du sol.
+     */
     public void updatePhysics(int groundY) {
         updatePhysics(groundY, -1, false);
     }
 
+    /**
+     * Met à jour la physique complète du joueur.
+     * @param groundY Position Y du sol.
+     * @param ceilingY Position Y du plafond.
+     * @param gravityInverted État de l'inversion de gravité.
+     */
     public void updatePhysics(int groundY, int ceilingY, boolean gravityInverted) {
         if (gravityInverted) {
             velocity += gravity; // gravité inversée : accélère vers le haut

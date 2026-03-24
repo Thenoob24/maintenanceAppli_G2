@@ -1,6 +1,14 @@
 import MG2D.FenetrePleinEcran;
 
+/**
+ * Point d'entrée principal du jeu JavaDash.
+ * Gère le cycle de vie global : Menu -> Jeu -> Retour Menu.
+ */
 class Main {
+    /**
+     * Méthode main lançant la fenêtre et la boucle principale du menu.
+     * @param args Arguments de la ligne de commande (non utilisés).
+     */
     public static void main(String[] args) {
         FenetrePleinEcran fen = new FenetrePleinEcran("JavaDash");
 

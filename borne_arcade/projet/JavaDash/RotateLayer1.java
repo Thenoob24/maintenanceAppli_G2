@@ -5,7 +5,15 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import javax.imageio.ImageIO;
 
+/**
+ * Classe utilitaire pour générer des versions pré-pivotées de la première couche du joueur.
+ * Utilisée pour créer les sprites tournés à 90, 180 et 270 degrés.
+ */
 public class RotateLayer1 {
+    /**
+     * Méthode principale qui lit layer1.png et génère les versions pivotées.
+     * @param args Arguments de la ligne de commande (non utilisés).
+     */
     public static void main(String[] args) {
         try {
             BufferedImage img = ImageIO.read(new File("./img/player/layer1.png"));

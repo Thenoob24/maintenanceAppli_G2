@@ -4,26 +4,52 @@ import java.awt.geom.AffineTransform;
 import MG2D.geometrie.Point;
 import MG2D.geometrie.Texture;
 
+/**
+ * Extension de la classe Texture de MG2D qui supporte la rotation.
+ */
 public class RotatingTexture extends Texture {
     private double angleDegrees = 0;
 
+    /**
+     * Constructeur pour RotatingTexture.
+     * @param chemin Chemin vers le fichier image.
+     * @param a Point en haut à gauche de la texture.
+     * @param larg Largeur de la texture.
+     * @param haut Hauteur de la texture.
+     */
     public RotatingTexture(String chemin, Point a, int larg, int haut) {
         super(chemin, a, larg, haut);
     }
     
+    /**
+     * Constructeur par copie pour RotatingTexture.
+     * @param rt La RotatingTexture à copier.
+     */
     public RotatingTexture(RotatingTexture rt) {
         super(rt);
         this.angleDegrees = rt.angleDegrees;
     }
 
+    /**
+     * Définit l'angle de rotation en degrés.
+     * @param angle L'angle en degrés.
+     */
     public void setAngle(double angle) {
         this.angleDegrees = angle;
     }
 
+    /**
+     * Retourne l'angle de rotation actuel en degrés.
+     * @return L'angle en degrés.
+     */
     public double getAngle() {
         return this.angleDegrees;
     }
 
+    /**
+     * Redéfinition de la méthode d'affichage pour appliquer la rotation via AffineTransform.
+     * @param g L'objet Graphics sur lequel dessiner.
+     */
     @Override
     public void afficher(Graphics g) {
         Graphics2D g2d = (Graphics2D) g.create();

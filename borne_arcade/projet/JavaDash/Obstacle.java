@@ -11,7 +11,10 @@ import MG2D.audio.decoder.JavaLayerException;
 import java.io.FileInputStream;
 import java.util.ArrayList;
 
-// Gestion des obstacles
+/**
+ * Gère les différents types d'obstacles et d'objets interactifs du jeu.
+ * Un obstacle peut être un pic (fixe ou mobile), une plateforme, ou une orbe sautante.
+ */
 class Obstacle {
     Dessin dessin;
     Cercle onde;
@@ -26,6 +29,15 @@ class Obstacle {
     boolean isOrb = false;
     boolean orbUsed = false;
 
+    /**
+     * Constructeur pour un obstacle de type pic ou plateforme avec mouvement vertical cyclique.
+     * @param d La texture de l'obstacle.
+     * @param startX Position X initiale.
+     * @param startY Position Y initiale.
+     * @param vitesseY Vitesse de mouvement vertical.
+     * @param amplitudeY Amplitude du mouvement vertical.
+     * @param isSpike Vrai si c'est un pic mortel.
+     */
     public Obstacle(Texture d, int startX, int startY, int vitesseY, int amplitudeY, boolean isSpike) {
         this.dessin = d;
         this.x = startX;
@@ -72,6 +84,13 @@ class Obstacle {
         this.vy = 0;
     }
 
+    /**
+     * Constructeur pour une orbe basée sur un Cercle (pulsante).
+     * @param c Le cercle représentant l'orbe.
+     * @param startX Position X initiale.
+     * @param startY Position Y initiale.
+     * @param isOrb Doit être vrai.
+     */
     public Obstacle(Cercle c, int startX, int startY, boolean isOrb) {
         this.dessin = c;
         this.x = startX;
@@ -83,10 +102,17 @@ class Obstacle {
         }
     }
 
+    /**
+     * Met à jour la position de l'obstacle sans intensité sonore (pulsation par défaut).
+     */
     public void update() {
         update(0);
     }
 
+    /**
+     * Met à jour la position de l'obstacle et l'animation de son onde.
+     * @param intensity L'intensité sonore actuelle pour la pulsation de l'onde (0.0 à 1.0).
+     */
     public void update(float intensity) {
         dessin.translater(-10, 0); // Vitesse horizontale
         if (onde != null) {
@@ -143,6 +169,15 @@ class Obstacle {
         return !(hasNeg && hasPos);
     }
 
+    /**
+     * Vérifie si le joueur est en collision avec cet obstacle.
+     * Gère les hitboxes rectangulaires (plateformes/orbes) et triangulaires (pics).
+     * @param pX Position X du joueur.
+     * @param pY Position Y du joueur.
+     * @param pW Largeur du joueur.
+     * @param pH Hauteur du joueur.
+     * @return Vrai s'il y a collision.
+     */
     public boolean collidesWithPlayer(int pX, int pY, int pW, int pH) {
         int ow, oh;
         if (dessin instanceof Texture) {

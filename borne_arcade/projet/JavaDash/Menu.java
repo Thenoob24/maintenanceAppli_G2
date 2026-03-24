@@ -2,6 +2,10 @@ import MG2D.*;
 import MG2D.geometrie.*;
 import java.awt.Font;
 
+/**
+ * Représente le menu principal du jeu.
+ * Gère l'affichage des titres, du fond et de l'animation d'aperçu du joueur.
+ */
 public class Menu {
     private Fenetre fen;
     private ClavierBorneArcade clavier;
@@ -13,6 +17,10 @@ public class Menu {
     private Texte titre;
     private Texte sousTitre;
 
+    /**
+     * Constructeur du menu initialisant les éléments graphiques.
+     * @param f La fenêtre MG2D dans laquelle afficher le menu.
+     */
     public Menu(Fenetre f) {
         this.fen = f;
         clavier = new ClavierBorneArcade();
@@ -45,6 +53,10 @@ public class Menu {
         fen.ajouter(sousTitre);
     }
     
+    /**
+     * Affiche le menu et attend une action de l'utilisateur pour lancer le jeu.
+     * @return L'état de sortie (1 pour lancer le jeu, 0 pour quitter).
+     */
     public int afficherMenu() {
         int etat = 0;
         int frameCount = 0;
@@ -87,6 +99,9 @@ public class Menu {
         return etat;
     }
     
+    /**
+     * Supprime tous les éléments graphiques du menu de la fenêtre.
+     */
     public void effacerMenu() {
         fen.supprimer(fond);
         for(Texture t : sol) fen.supprimer(t);

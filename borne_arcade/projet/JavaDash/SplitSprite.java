@@ -2,7 +2,15 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import javax.imageio.ImageIO;
 
+/**
+ * Classe utilitaire pour découper une planche de sprites en couches individuelles.
+ * Utilisée spécifiquement pour l'animation de la balle du joueur.
+ */
 public class SplitSprite {
+    /**
+     * Méthode principale qui lit la planche de sprites du joueur et sauvegarde chaque couche.
+     * @param args Arguments de la ligne de commande (non utilisés).
+     */
     public static void main(String[] args) {
         try {
             File f = new File("./img/player/player_ball_62-uhd.png");

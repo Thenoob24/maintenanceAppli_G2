@@ -7,6 +7,11 @@ import MG2D.audio.decoder.JavaLayerException;
 import java.io.FileInputStream;
 import java.util.ArrayList;
 
+/**
+ * Classe principale gérant la logique du jeu JavaDash.
+ * Elle orchestre les décors défilants, les obstacles, la physique du joueur
+ * et les effets synchronisés avec la musique.
+ */
 class Jeu {
     private Fenetre fen;
     private int W;
@@ -36,6 +41,10 @@ class Jeu {
     private static final int VICTOIRE_DUREE = 180;
     private Texte texteAmplitude;
 
+    /**
+     * Classe interne pour capturer l'amplitude sonore en temps réel.
+     * Étend JavaSoundAudioDevice pour analyser les échantillons audio joués.
+     */
     class MyAudioDevice extends JavaSoundAudioDevice {
         public volatile float currentAmplitude = 0;
         public volatile long framesPlayed = 0;
@@ -104,6 +113,11 @@ class Jeu {
     // -------------------------------------------------------
     // Calcule la durée totale du MP3 en samples PCM
     // -------------------------------------------------------
+    /**
+     * Calcule la durée totale du fichier MP3 en nombre d'échantillons (frames).
+     * @param path Chemin vers le fichier MP3.
+     * @return Le nombre total de frames audio.
+     */
     private long getMp3TotalFrames(String path) {
         try {
             FileInputStream fis = new FileInputStream(path);
@@ -150,6 +164,12 @@ class Jeu {
     // Détecte si l'amplitude courante représente un "beat"
     // en comparant à la moyenne locale (fenêtre glissante courte)
     // -------------------------------------------------------
+    /**
+     * Détecte si l'amplitude actuelle correspond à un "beat" musical.
+     * Utilise une moyenne glissante locale pour identifier les pics brusques.
+     * @param amp L'amplitude sonore actuelle.
+     * @return Vrai si un beat est détecté (front montant).
+     */
     private boolean detectBeat(float amp) {
         // Met à jour l'historique circulaire
         ampHistory[ampHistIdx % ampHistory.length] = amp;
@@ -174,6 +194,11 @@ class Jeu {
     // -------------------------------------------------------
     // CRÉATION DU JEU
     // -------------------------------------------------------
+    /**
+     * Initialise tous les éléments du jeu : décors, barre de progression,
+     * clavier, joueur et moteur audio.
+     * @param f La fenêtre MG2D à utiliser.
+     */
     public void CreationJeu(Fenetre f) {
         fen = f;
         W = fen.getWidth();
@@ -270,6 +295,12 @@ class Jeu {
     // BOUCLE DE JEU
     // Codes de retour : 0 = en cours | 2 = victoire | 3 = défaite
     // -------------------------------------------------------
+    /**
+     * Boucle de mise à jour principale appelée à chaque frame.
+     * Gère le défilement, le spawn des obstacles, les effets visuels et les collisions.
+     * @param game État actuel du jeu.
+     * @return Nouvel état du jeu (0: en cours, 2: victoire, 3: défaite).
+     */
     public int NewGame(int game) {
         try {
             Thread.sleep(16);
@@ -595,6 +626,10 @@ class Jeu {
     // -------------------------------------------------------
     // NETTOYAGE
     // -------------------------------------------------------
+    /**
+     * Supprime tous les éléments graphiques et ferme les ressources audio.
+     * Appelée lors d'un retour au menu ou de la fermeture du jeu.
+     */
     public void effacerJeu() {
         fen.supprimer(fond1);
         fen.supprimer(fond2);
